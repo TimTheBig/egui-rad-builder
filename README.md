@@ -12,3 +12,10 @@ cargo build
 ```shell
 cargo run
 ```
+
+# todo
+- add panels
+- add menus
+- flesh out font, scaling, color options
+- add https://github.com/trevyn/egui_node_graph2
+- add https://github.com/LennysLounge/egui_ltreeview
