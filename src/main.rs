@@ -380,14 +380,24 @@ impl RadBuilderApp {
     }
 
     fn generated_panel(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Generated Output");
-        ui.label("Rust code (or JSON export) will appear here. Copy-paste into your app.");
-        let mut lay = egui::TextEdit::multiline(&mut self.generated)
-            .desired_rows(18)
-            .lock_focus(true)
-            .code_editor();
-        ui.add(lay);
-    }
+		ui.heading("Generated Output");
+		ui.label("Rust code (or JSON export) will appear here. Copy-paste into your app.");
+
+		// A scrollable viewport for the generated text:
+		egui::ScrollArea::vertical()
+			.id_source("generated_output_scroll")
+			.max_height(280.0) // tweak to taste
+			.auto_shrink([false, false])
+			.show(ui, |ui| {
+				let editor = egui::TextEdit::multiline(&mut self.generated)
+					.code_editor()
+					.lock_focus(true)
+					.desired_rows(18)
+					.desired_width(f32::INFINITY); // fill available width
+
+				ui.add(editor);
+			});
+	}
 
     fn generate_code(&self) -> String {
 		let mut out = String::new();
