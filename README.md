@@ -7,7 +7,7 @@ This tool is under active development.
 
 # build
 ```shell
-cargo buildin
+cargo build
 ```
 
 # run
