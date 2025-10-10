@@ -16,7 +16,7 @@ cargo run
 # use
 - Drag and drop controls from the pallette into the central canvas.
 - Control properties can be edited in the Inspector on the right.
-- Click 'Generate Code' to produce your UI boilerplate in the output window.
+- Click 'Generate Code' to produce your UI boilerplate in the output text area.
 - Create a new Rust project with 'cargo new project_name'
 - Enter the project folder with 'cd project_name'
 - Add egui and eframe dependencies to the project with 'cargo add egui eframe'
