@@ -1,5 +1,5 @@
 # egui-rad-builder
-Tool for quickly designing egui user interfaces.  This tool is under active development.  UIs built with it should build and run, but there are still many rough edges.  PRs welcome.
+Tool for quickly designing egui user interfaces.  This tool is under active development.  UIs built with it should build and run, but there are still many rough edges.  Issues and PRs welcome.
 
 ![egui RAD builder screenshot](doc/screenshot.png)
 
