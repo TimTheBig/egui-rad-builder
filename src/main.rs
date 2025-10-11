@@ -2,7 +2,7 @@
 
 use chrono::{Datelike, NaiveDate};
 use eframe::{egui, egui::pos2, egui::vec2};
-use egui::{Align, Color32, Id, Pos2, Rect, Response, Rounding, Sense, Stroke, Vec2};
+use egui::{Color32, CornerRadius, Id, Pos2, Rect, Sense, Stroke, UiBuilder, Vec2};
 use egui_extras::DatePickerButton;
 use serde::{Deserialize, Serialize};
 
@@ -130,7 +130,7 @@ impl RadBuilderApp {
         let id = WidgetId(self.next_id);
         self.next_id += 1;
 
-        let (size, mut props) = match kind {
+        let (size, props) = match kind {
             WidgetKind::Label => (
                 vec2(140.0, 24.0),
                 WidgetProps {
@@ -275,7 +275,7 @@ impl RadBuilderApp {
                 painter.rect_filled(ghost, 4.0, Color32::from_gray(40));
                 painter.rect_stroke(
                     ghost,
-                    Rounding::same(4),
+                    CornerRadius::same(4),
                     Stroke::new(1.0, Color32::LIGHT_BLUE),
                     egui::StrokeKind::Outside,
                 );
@@ -289,12 +289,12 @@ impl RadBuilderApp {
             }
             // Drop on mouse release inside canvas
             if ui.input(|i| i.pointer.any_released()) {
-                if let Some(pos) = ui.ctx().pointer_interact_pos() {
-                    if canvas_rect.contains(pos) {
-                        let local = pos - canvas_rect.min; // Vec2
-                        let snapped = self.snap_pos(pos2(local.x, local.y));
-                        self.spawn_widget(kind, snapped);
-                    }
+                if let Some(pos) = ui.ctx().pointer_interact_pos()
+                    && canvas_rect.contains(pos)
+                {
+                    let local = pos - canvas_rect.min; // Vec2
+                    let snapped = self.snap_pos(pos2(local.x, local.y));
+                    self.spawn_widget(kind, snapped);
                 }
                 self.spawning = None;
             }
@@ -373,21 +373,21 @@ impl RadBuilderApp {
         if *selected == Some(w.id) {
             painter.rect_stroke(
                 rect,
-                Rounding::same(6),
+                CornerRadius::same(6),
                 Stroke::new(2.0, Color32::LIGHT_BLUE),
                 egui::StrokeKind::Outside,
             );
         } else {
             painter.rect_stroke(
                 rect,
-                Rounding::same(6),
+                CornerRadius::same(6),
                 Stroke::new(1.0, Color32::from_gray(90)),
                 egui::StrokeKind::Outside,
             );
         }
         painter.rect_filled(handle_rect, 2.0, Color32::from_rgb(100, 160, 255));
 
-        ui.allocate_ui_at_rect(rect, |ui| match w.kind {
+        ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| match w.kind {
             WidgetKind::Label => {
                 ui.vertical_centered(|ui| {
                     ui.label(&w.props.text);
@@ -431,7 +431,7 @@ impl RadBuilderApp {
                 w.props.selected = sel;
             }
             WidgetKind::Link => {
-                ui.link(&w.props.text);
+                let _ = ui.link(&w.props.text);
             }
             WidgetKind::Hyperlink => {
                 ui.hyperlink_to(&w.props.text, &w.props.url);
@@ -439,7 +439,7 @@ impl RadBuilderApp {
             WidgetKind::SelectableLabel => {
                 let mut on = w.props.checked;
                 if ui
-                    .add(egui::SelectableLabel::new(on, &w.props.text))
+                    .add(egui::Button::selectable(on, &w.props.text))
                     .clicked()
                 {
                     on = !on;
@@ -453,7 +453,7 @@ impl RadBuilderApp {
                     w.props.items.clone()
                 };
                 let mut sel = w.props.selected.min(items.len() - 1);
-                egui::ComboBox::from_id_source(w.id.0)
+                egui::ComboBox::from_id_salt(w.id.0)
                     .width(w.size.x)
                     .selected_text(items[sel].clone())
                     .show_ui(ui, |ui| {
@@ -476,8 +476,8 @@ impl RadBuilderApp {
             WidgetKind::DatePicker => {
                 let mut date = NaiveDate::from_ymd_opt(
                     w.props.year,
-                    w.props.month.max(1).min(12),
-                    w.props.day.max(1).min(28), // simple clamp
+                    w.props.month.clamp(1, 12),
+                    w.props.day.clamp(1, 28), // simple clamp
                 )
                 .unwrap_or_else(|| NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());
                 ui.horizontal(|ui| {
@@ -602,7 +602,7 @@ impl RadBuilderApp {
                             ui.label("Selected index");
                             ui.add(
                                 egui::DragValue::new(&mut w.props.selected)
-                                    .clamp_range(0..=w.props.items.len().saturating_sub(1)),
+                                    .range(0..=w.props.items.len().saturating_sub(1)),
                             );
                         });
                     }
@@ -615,9 +615,9 @@ impl RadBuilderApp {
                         ui.label("Year");
                         ui.add(egui::DragValue::new(&mut w.props.year));
                         ui.label("Month");
-                        ui.add(egui::DragValue::new(&mut w.props.month).clamp_range(1..=12));
+                        ui.add(egui::DragValue::new(&mut w.props.month).range(1..=12));
                         ui.label("Day");
-                        ui.add(egui::DragValue::new(&mut w.props.day).clamp_range(1..=31));
+                        ui.add(egui::DragValue::new(&mut w.props.day).range(1..=31));
                     });
                 }
                 _ => {}
@@ -632,9 +632,9 @@ impl RadBuilderApp {
             });
             ui.horizontal(|ui| {
                 ui.label("w");
-                ui.add(egui::DragValue::new(&mut w.size.x).clamp_range(16.0..=2000.0));
+                ui.add(egui::DragValue::new(&mut w.size.x).range(16.0..=2000.0));
                 ui.label("h");
-                ui.add(egui::DragValue::new(&mut w.size.y).clamp_range(12.0..=2000.0));
+                ui.add(egui::DragValue::new(&mut w.size.y).range(12.0..=2000.0));
             });
 
             ui.add_space(6.0);
@@ -649,29 +649,29 @@ impl RadBuilderApp {
     }
 
     fn top_bar(&mut self, ui: &mut egui::Ui) {
-        egui::menu::bar(ui, |ui| {
+        egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button("File", |ui| {
                 if ui.button("Generate Code").clicked() {
                     self.generated = self.generate_code();
-                    ui.close_menu();
+                    ui.close_kind(egui::UiKind::Menu);
                 }
                 if ui.button("Export JSON").clicked() {
                     if let Ok(s) = serde_json::to_string_pretty(&self.project) {
                         self.generated = s;
                     }
-                    ui.close_menu();
+                    ui.close_kind(egui::UiKind::Menu);
                 }
                 if ui.button("Import JSON (from editor below)").clicked() {
                     if let Ok(p) = serde_json::from_str::<Project>(&self.generated) {
                         self.project = p;
                         self.selected = None;
                     }
-                    ui.close_menu();
+                    ui.close_kind(egui::UiKind::Menu);
                 }
                 if ui.button("Clear Project").clicked() {
                     self.project = Project::default();
                     self.selected = None;
-                    ui.close_menu();
+                    ui.close_kind(egui::UiKind::Menu);
                 }
             });
 
@@ -682,7 +682,7 @@ impl RadBuilderApp {
             ui.menu_button("Settings", |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Grid");
-                    ui.add(egui::DragValue::new(&mut self.grid_size).clamp_range(2.0..=64.0));
+                    ui.add(egui::DragValue::new(&mut self.grid_size).range(2.0..=64.0));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Canvas size");
@@ -707,7 +707,7 @@ impl RadBuilderApp {
 
         // A scrollable viewport for the generated text:
         egui::ScrollArea::vertical()
-            .id_source("generated_output_scroll")
+            .id_salt("generated_output_scroll")
             .max_height(280.0)
             .auto_shrink([false, false])
             .show(ui, |ui| {
@@ -807,8 +807,8 @@ impl RadBuilderApp {
                 }
                 WidgetKind::DatePicker => {
                     let y = w.props.year;
-                    let m = w.props.month.max(1).min(12);
-                    let d = w.props.day.max(1).min(28);
+                    let m = w.props.month.clamp(1, 12);
+                    let d = w.props.day.clamp(1, 28);
                     out.push_str(&format!(
                         "            date_{}: NaiveDate::from_ymd_opt({}, {}, {}).unwrap(),\n",
                         w.id.0, y, m, d
