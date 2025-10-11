@@ -1,7 +1,7 @@
 # egui-rad-builder
 Tool for quickly designing egui user interfaces.  This tool is under active development.  UIs built with it should build and run, but there are still many rough edges.  Issues and PRs welcome.
 
-<img src="doc/egui-rad-builder-screenshot.png" width=30% alt="egui RAD builder screenshot"/> <img src="doc/ui-screenshot.png" width=30% alt="Generated UI"/>
+<img src="doc/egui-rad-builder-screenshot.png" width=45% alt="egui RAD builder screenshot"/> <img src="doc/ui-screenshot.png" width=45% alt="Generated UI"/>
 
 # build
 ```shell
@@ -22,7 +22,7 @@ cargo run
 - Use the following Cargo.toml
 ```toml
 [package]
-name = "testy"
+name = "project_name"
 version = "0.1.0"
 edition = "2024"
 
