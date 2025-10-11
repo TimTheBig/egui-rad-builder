@@ -1,14 +1,18 @@
 //! A lightweight RAD GUI builder for `egui` written in Rust.
 
+use chrono::{Datelike, NaiveDate};
 use eframe::{egui, egui::pos2, egui::vec2};
 use egui::{Align, Color32, Id, Pos2, Rect, Response, Rounding, Sense, Stroke, Vec2};
 use egui_extras::DatePickerButton;
-use chrono::{NaiveDate, Datelike};
 use serde::{Deserialize, Serialize};
 
 fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions::default();
-    eframe::run_native("egui RAD GUI Builder", native_options, Box::new(|_cc| Ok(Box::<RadBuilderApp>::default())),)
+    eframe::run_native(
+        "egui RAD GUI Builder",
+        native_options,
+        Box::new(|_cc| Ok(Box::<RadBuilderApp>::default())),
+    )
 }
 
 struct RadBuilderApp {
@@ -26,7 +30,10 @@ struct RadBuilderApp {
 
 impl Default for Project {
     fn default() -> Self {
-        Self { widgets: Vec::new(), canvas_size: vec2(1200.0, 800.0) }
+        Self {
+            widgets: Vec::new(),
+            canvas_size: vec2(1200.0, 800.0),
+        }
     }
 }
 
@@ -57,9 +64,9 @@ struct Project {
 struct Widget {
     id: WidgetId,
     kind: WidgetKind,
-    pos: Pos2,   // Top-left relative to canvas
-    size: Vec2,  // Desired size on canvas
-    z: i32,      // draw order
+    pos: Pos2,  // Top-left relative to canvas
+    size: Vec2, // Desired size on canvas
+    z: i32,     // draw order
     props: WidgetProps,
 }
 
@@ -84,9 +91,9 @@ enum WidgetKind {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct WidgetProps {
-    text: String,         // label/button/textedit placeholder
-    checked: bool,        // checkbox
-    value: f32,           // slider/progress
+    text: String,  // label/button/textedit placeholder
+    checked: bool, // checkbox
+    value: f32,    // slider/progress
     min: f32,
     max: f32,
     // lists (for radio/combobox)
@@ -255,7 +262,8 @@ impl RadBuilderApp {
 
     fn canvas_ui(&mut self, ui: &mut egui::Ui) {
         // The design canvas area
-        let (canvas_resp, _painter) = ui.allocate_painter(self.project.canvas_size, Sense::click_and_drag());
+        let (canvas_resp, _painter) =
+            ui.allocate_painter(self.project.canvas_size, Sense::click_and_drag());
         let canvas_rect = canvas_resp.rect;
 
         // Spawn from palette drag-preview
@@ -283,7 +291,7 @@ impl RadBuilderApp {
             if ui.input(|i| i.pointer.any_released()) {
                 if let Some(pos) = ui.ctx().pointer_interact_pos() {
                     if canvas_rect.contains(pos) {
-                        let local = pos - canvas_rect.min;            // Vec2
+                        let local = pos - canvas_rect.min; // Vec2
                         let snapped = self.snap_pos(pos2(local.x, local.y));
                         self.spawn_widget(kind, snapped);
                     }
@@ -390,10 +398,7 @@ impl RadBuilderApp {
             }
             WidgetKind::Checkbox => {
                 let mut checked = w.props.checked;
-                ui.add_sized(
-                    w.size,
-                    egui::Checkbox::new(&mut checked, &w.props.text),
-                );
+                ui.add_sized(w.size, egui::Checkbox::new(&mut checked, &w.props.text));
                 w.props.checked = checked;
             }
             WidgetKind::TextEdit => {
@@ -405,14 +410,12 @@ impl RadBuilderApp {
             WidgetKind::Slider => {
                 let mut v = w.props.value;
                 let slider =
-                    egui::Slider::new(&mut v, w.props.min..=w.props.max)
-                        .text(&w.props.text);
+                    egui::Slider::new(&mut v, w.props.min..=w.props.max).text(&w.props.text);
                 ui.add_sized(w.size, slider);
                 w.props.value = v;
             }
             WidgetKind::ProgressBar => {
-                let bar = egui::ProgressBar::new(w.props.value.clamp(0.0, 1.0))
-                    .show_percentage();
+                let bar = egui::ProgressBar::new(w.props.value.clamp(0.0, 1.0)).show_percentage();
                 ui.add_sized(w.size, bar);
             }
             // NEW drawings:
@@ -564,14 +567,8 @@ impl RadBuilderApp {
                         egui::Slider::new(&mut w.props.value, w.props.min..=w.props.max)
                             .text("value"),
                     );
-                    ui.add(
-                        egui::Slider::new(&mut w.props.min, -1000.0..=w.props.max)
-                            .text("min"),
-                    );
-                    ui.add(
-                        egui::Slider::new(&mut w.props.max, w.props.min..=1000.0)
-                            .text("max"),
-                    );
+                    ui.add(egui::Slider::new(&mut w.props.min, -1000.0..=w.props.max).text("min"));
+                    ui.add(egui::Slider::new(&mut w.props.max, w.props.min..=1000.0).text("max"));
                 }
                 WidgetKind::ProgressBar => {
                     ui.add(egui::Slider::new(&mut w.props.value, 0.0..=1.0).text("progress"));
@@ -635,15 +632,9 @@ impl RadBuilderApp {
             });
             ui.horizontal(|ui| {
                 ui.label("w");
-                ui.add(
-                    egui::DragValue::new(&mut w.size.x)
-                        .clamp_range(16.0..=2000.0),
-                );
+                ui.add(egui::DragValue::new(&mut w.size.x).clamp_range(16.0..=2000.0));
                 ui.label("h");
-                ui.add(
-                    egui::DragValue::new(&mut w.size.y)
-                        .clamp_range(12.0..=2000.0),
-                );
+                ui.add(egui::DragValue::new(&mut w.size.y).clamp_range(12.0..=2000.0));
             });
 
             ui.add_space(6.0);
@@ -670,10 +661,7 @@ impl RadBuilderApp {
                     }
                     ui.close_menu();
                 }
-                if ui
-                    .button("Import JSON (from editor below)")
-                    .clicked()
-                {
+                if ui.button("Import JSON (from editor below)").clicked() {
                     if let Ok(p) = serde_json::from_str::<Project>(&self.generated) {
                         self.project = p;
                         self.selected = None;
@@ -694,10 +682,7 @@ impl RadBuilderApp {
             ui.menu_button("Settings", |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Grid");
-                    ui.add(
-                        egui::DragValue::new(&mut self.grid_size)
-                            .clamp_range(2.0..=64.0),
-                    );
+                    ui.add(egui::DragValue::new(&mut self.grid_size).clamp_range(2.0..=64.0));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Canvas size");
@@ -707,7 +692,9 @@ impl RadBuilderApp {
             });
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button("Generate Code").clicked() { self.generated = self.generate_code(); }
+                if ui.button("Generate Code").clicked() {
+                    self.generated = self.generate_code();
+                }
                 ui.separator();
                 ui.strong("egui RAD GUI Builder");
             });
@@ -715,24 +702,24 @@ impl RadBuilderApp {
     }
 
     fn generated_panel(&mut self, ui: &mut egui::Ui) {
-		ui.heading("Generated Output");
-		ui.label("Rust code (or JSON export) will appear here. Copy-paste into your app.");
+        ui.heading("Generated Output");
+        ui.label("Rust code (or JSON export) will appear here. Copy-paste into your app.");
 
-		// A scrollable viewport for the generated text:
-		egui::ScrollArea::vertical()
-			.id_source("generated_output_scroll")
-			.max_height(280.0)
-			.auto_shrink([false, false])
-			.show(ui, |ui| {
-				let editor = egui::TextEdit::multiline(&mut self.generated)
-					.code_editor()
-					.lock_focus(true)
-					.desired_rows(18)
-					.desired_width(f32::INFINITY); // fill available width
+        // A scrollable viewport for the generated text:
+        egui::ScrollArea::vertical()
+            .id_source("generated_output_scroll")
+            .max_height(280.0)
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                let editor = egui::TextEdit::multiline(&mut self.generated)
+                    .code_editor()
+                    .lock_focus(true)
+                    .desired_rows(18)
+                    .desired_width(f32::INFINITY); // fill available width
 
-				ui.add(editor);
-			});
-	}
+                ui.add(editor);
+            });
+    }
 
     fn generate_code(&self) -> String {
         let mut out = String::new();
@@ -744,22 +731,24 @@ impl RadBuilderApp {
         out.push_str("struct GeneratedState {\n");
         for w in &self.project.widgets {
             match w.kind {
-                WidgetKind::TextEdit => out
-                    .push_str(&format!("    text_{}: String,\n", w.id.0)),
-                WidgetKind::Checkbox => out
-                    .push_str(&format!("    checked_{}: bool,\n", w.id.0)),
-                WidgetKind::Slider => out
-                    .push_str(&format!("    value_{}: f32,\n", w.id.0)),
-                WidgetKind::ProgressBar => out
-                    .push_str(&format!("    progress_{}: f32,\n", w.id.0)),
-                WidgetKind::SelectableLabel => out
-                    .push_str(&format!("    sel_{}: bool,\n", w.id.0)),
-                WidgetKind::RadioGroup | WidgetKind::ComboBox => out
-                    .push_str(&format!("    sel_{}: usize,\n", w.id.0)),
-                WidgetKind::CollapsingHeader => out
-                    .push_str(&format!("    open_{}: bool,\n", w.id.0)),
-                WidgetKind::DatePicker => out
-                    .push_str(&format!("    date_{}: NaiveDate,\n", w.id.0)),
+                WidgetKind::TextEdit => out.push_str(&format!("    text_{}: String,\n", w.id.0)),
+                WidgetKind::Checkbox => out.push_str(&format!("    checked_{}: bool,\n", w.id.0)),
+                WidgetKind::Slider => out.push_str(&format!("    value_{}: f32,\n", w.id.0)),
+                WidgetKind::ProgressBar => {
+                    out.push_str(&format!("    progress_{}: f32,\n", w.id.0))
+                }
+                WidgetKind::SelectableLabel => {
+                    out.push_str(&format!("    sel_{}: bool,\n", w.id.0))
+                }
+                WidgetKind::RadioGroup | WidgetKind::ComboBox => {
+                    out.push_str(&format!("    sel_{}: usize,\n", w.id.0))
+                }
+                WidgetKind::CollapsingHeader => {
+                    out.push_str(&format!("    open_{}: bool,\n", w.id.0))
+                }
+                WidgetKind::DatePicker => {
+                    out.push_str(&format!("    date_{}: NaiveDate,\n", w.id.0))
+                }
                 _ => {}
             }
         }
@@ -792,10 +781,7 @@ impl RadBuilderApp {
                 }
                 WidgetKind::ProgressBar => {
                     let p = w.props.value.clamp(0.0, 1.0);
-                    out.push_str(&format!(
-                        "            progress_{}: {:.3},\n",
-                        w.id.0, p
-                    ));
+                    out.push_str(&format!("            progress_{}: {:.3},\n", w.id.0, p));
                 }
                 WidgetKind::SelectableLabel => {
                     out.push_str(&format!(
@@ -835,13 +821,15 @@ impl RadBuilderApp {
         out.push_str("    }\n");
         out.push_str("}\n\n");
 
-	// --- UI function ---
-	out.push_str("fn generated_ui(ui: &mut egui::Ui, state: &mut GeneratedState) {\n");
-	out.push_str(&format!(
+        // --- UI function ---
+        out.push_str("fn generated_ui(ui: &mut egui::Ui, state: &mut GeneratedState) {\n");
+        out.push_str(&format!(
 		"    let canvas = egui::Rect::from_min_size(ui.min_rect().min, egui::vec2({:.1}, {:.1}));\n",
 		self.project.canvas_size.x, self.project.canvas_size.y
 	));
-	out.push_str("    let (_resp, _p) = ui.allocate_painter(canvas.size(), egui::Sense::hover());\n\n");
+        out.push_str(
+            "    let (_resp, _p) = ui.allocate_painter(canvas.size(), egui::Sense::hover());\n\n",
+        );
 
         for w in &self.project.widgets {
             let pos = w.pos;
@@ -899,10 +887,7 @@ impl RadBuilderApp {
                         "    ui.allocate_ui_at_rect(egui::Rect::from_min_size(ui.min_rect().min + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{\n",
                         pos.x, pos.y, size.x, size.y
                     ));
-                    out.push_str(&format!(
-                        "        let items = vec![{}];\n",
-                        items_code
-                    ));
+                    out.push_str(&format!("        let items = vec![{}];\n", items_code));
                     out.push_str(&format!(
                         "        for (i, it) in items.iter().enumerate() {{ if ui.add(egui::RadioButton::new(state.sel_{} == i, it)).clicked() {{ state.sel_{} = i; }} }}\n",
                         w.id.0, w.id.0
@@ -928,36 +913,42 @@ impl RadBuilderApp {
                     ));
                 }
                 WidgetKind::ComboBox => {
-					let items_code = if w.props.items.is_empty() {
-						"\"Item\".to_string()".to_owned()
-					} else {
-						w.props
-							.items
-							.iter()
-							.map(|s| format!("\"{}\".to_string()", escape(s)))
-							.collect::<Vec<_>>()
-							.join(", ")
-					};
+                    let items_code = if w.props.items.is_empty() {
+                        "\"Item\".to_string()".to_owned()
+                    } else {
+                        w.props
+                            .items
+                            .iter()
+                            .map(|s| format!("\"{}\".to_string()", escape(s)))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    };
 
-					out.push_str(&format!(
+                    out.push_str(&format!(
 						"    ui.allocate_ui_at_rect(egui::Rect::from_min_size(ui.min_rect().min + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1})), |ui| {{\n",
 						x = pos.x, y = pos.y, w = size.x, h = size.y
 					));
-					out.push_str(&format!("        let items = vec![{items}];\n", items = items_code));
-					out.push_str(&format!("        egui::ComboBox::from_id_source({id})\n", id = w.id.0));
-					out.push_str(&format!("            .width({:.1})\n", size.x));
-					out.push_str(&format!(
+                    out.push_str(&format!(
+                        "        let items = vec![{items}];\n",
+                        items = items_code
+                    ));
+                    out.push_str(&format!(
+                        "        egui::ComboBox::from_id_source({id})\n",
+                        id = w.id.0
+                    ));
+                    out.push_str(&format!("            .width({:.1})\n", size.x));
+                    out.push_str(&format!(
 						"            .selected_text(items.get(state.sel_{id}).cloned().unwrap_or_else(|| \"\".to_string()))\n",
 						id = w.id.0
 					));
-					out.push_str("            .show_ui(ui, |ui| {\n");
-					out.push_str(&format!(
+                    out.push_str("            .show_ui(ui, |ui| {\n");
+                    out.push_str(&format!(
 						"                for (i, it) in items.iter().enumerate() {{ ui.selectable_value(&mut state.sel_{id}, i, it.clone()); }}\n",
 						id = w.id.0
 					));
-					out.push_str("            });\n");
-					out.push_str("    });\n");
-				}
+                    out.push_str("            });\n");
+                    out.push_str("    });\n");
+                }
                 WidgetKind::Separator => {
                     out.push_str(&format!(
                         "    ui.allocate_ui_at_rect(egui::Rect::from_min_size(ui.min_rect().min + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ ui.separator(); }});\n",
@@ -984,7 +975,9 @@ impl RadBuilderApp {
         out.push_str("pub struct GeneratedApp { state: GeneratedState }\n");
         out.push_str("impl Default for GeneratedApp { fn default() -> Self { Self { state: Default::default() } } }\n");
         out.push_str("impl eframe::App for GeneratedApp {\n");
-        out.push_str("    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {\n");
+        out.push_str(
+            "    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {\n",
+        );
         out.push_str("        egui::CentralPanel::default().show(ctx, |ui| {\n");
         out.push_str("            generated_ui(ui, &mut self.state);\n");
         out.push_str("        });\n");
@@ -1015,16 +1008,20 @@ impl eframe::App for RadBuilderApp {
         egui::TopBottomPanel::top("menubar").show(ctx, |ui| self.top_bar(ui));
 
         if self.palette_open {
-            egui::SidePanel::left("palette").resizable(true).show(ctx, |ui| {
-                self.palette_ui(ui);
-            });
+            egui::SidePanel::left("palette")
+                .resizable(true)
+                .show(ctx, |ui| {
+                    self.palette_ui(ui);
+                });
         }
 
-        egui::SidePanel::right("inspector").default_width(260.0).show(ctx, |ui| {
-            self.inspector_ui(ui);
-            ui.separator();
-            self.generated_panel(ui);
-        });
+        egui::SidePanel::right("inspector")
+            .default_width(260.0)
+            .show(ctx, |ui| {
+                self.inspector_ui(ui);
+                ui.separator();
+                self.generated_panel(ui);
+            });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.style_mut().spacing.item_spacing = vec2(0.0, 0.0);
@@ -1037,19 +1034,3 @@ impl eframe::App for RadBuilderApp {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
