@@ -42,3 +42,4 @@ egui_extras = { version = "0.33.0", features = ["chrono"] }
 - flesh out font, scaling, color options in inspector
 - add https://github.com/trevyn/egui_node_graph2
 - add https://github.com/LennysLounge/egui_ltreeview
+- drop controls with upper left corner aligned to cursor instead of center
