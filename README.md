@@ -1,7 +1,7 @@
 # egui-rad-builder
 Tool for quickly designing egui user interfaces.  This tool is under active development.  UIs built with it should build and run, but there are still many rough edges.  Issues and PRs welcome.
 
-![egui RAD builder screenshot](doc/screenshot.png)
+<img src="doc/egui-rad-builder-screenshot.png" width=30% alt="egui RAD builder screenshot"/> <img src="doc/ui-screenshot.png" width=30% alt="Generated UI"/>
 
 # build
 ```shell
@@ -19,13 +19,26 @@ cargo run
 - Click 'Generate Code' to produce your UI boilerplate in the output text area.
 - Create a new Rust project with 'cargo new project_name'
 - Enter the project folder with 'cd project_name'
-- Add egui and eframe dependencies to the project with 'cargo add egui eframe'
+- Use the following Cargo.toml
+```toml
+[package]
+name = "testy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chrono = "0.4.42"
+eframe = "0.33.0"
+egui = "0.33.0"
+egui_extras = { version = "0.33.0", features = ["chrono"] }
+```
 - Copy the generated code and paste it into 'src/main.rs'
 - Build and run the project with 'cargo build'
 
 # todo
 - add panels
 - add menus
-- flesh out font, scaling, color options
+- add support for multiple 'pages', 'screens', or 'tabs'
+- flesh out font, scaling, color options in inspector
 - add https://github.com/trevyn/egui_node_graph2
 - add https://github.com/LennysLounge/egui_ltreeview
