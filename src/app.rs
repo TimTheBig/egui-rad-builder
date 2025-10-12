@@ -152,10 +152,13 @@ impl RadBuilderApp {
             ),
         };
 
+		let mut pos = at - size * 0.5;
+		pos = self.snap_pos(pos);
+
         let w = Widget {
             id,
             kind,
-            pos: at,
+            pos,
             size,
             z: id.as_z(),
             props,
@@ -178,7 +181,23 @@ impl RadBuilderApp {
         // Spawn from palette drag-preview
         if let Some(kind) = self.spawning.clone() {
             if let Some(mouse) = ui.ctx().pointer_interact_pos() {
-                let ghost = Rect::from_min_size(mouse - vec2(50.0, 16.0), vec2(120.0, 32.0));
+				let ghost_size = match kind {
+					WidgetKind::Label => vec2(140.0, 24.0),
+					WidgetKind::Button => vec2(160.0, 32.0),
+					WidgetKind::Checkbox => vec2(160.0, 28.0),
+					WidgetKind::TextEdit => vec2(220.0, 36.0),
+					WidgetKind::Slider => vec2(220.0, 24.0),
+					WidgetKind::ProgressBar => vec2(220.0, 20.0),
+					WidgetKind::RadioGroup => vec2(200.0, 80.0),
+					WidgetKind::Link => vec2(160.0, 20.0),
+					WidgetKind::Hyperlink => vec2(200.0, 20.0),
+					WidgetKind::SelectableLabel => vec2(180.0, 24.0),
+					WidgetKind::ComboBox => vec2(220.0, 28.0),
+					WidgetKind::Separator => vec2(220.0, 8.0),
+					WidgetKind::CollapsingHeader => vec2(260.0, 80.0),
+					WidgetKind::DatePicker => vec2(200.0, 28.0),
+				};
+                let ghost = Rect::from_center_size(mouse, ghost_size);
                 let layer = egui::LayerId::new(egui::Order::Tooltip, Id::new("ghost"));
                 let painter = ui.ctx().layer_painter(layer);
                 painter.rect_filled(ghost, 4.0, Color32::from_gray(40));
@@ -202,8 +221,7 @@ impl RadBuilderApp {
                     && canvas_rect.contains(pos)
                 {
                     let local = pos - canvas_rect.min; // Vec2
-                    let snapped = self.snap_pos(pos2(local.x, local.y));
-                    self.spawn_widget(kind, snapped);
+                    self.spawn_widget(kind, pos2(local.x, local.y));
                 }
                 self.spawning = None;
             }
