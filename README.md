@@ -50,3 +50,5 @@ egui_extras = { version = "0.33.0", features = ["chrono"] }
 - implement support for scenes
 - implement support for tables
 - implement settings for window title, closeable, collapsible, resizeable, constrained, horizontal scroll, vertical scroll, anchoring
+- implement image widget
+- implement plot widget
