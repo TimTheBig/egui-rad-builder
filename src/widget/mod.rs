@@ -37,6 +37,7 @@ pub(crate) struct Widget {
 pub(crate) enum WidgetKind {
     Label,
     Button,
+    ImageTextButton,
     Checkbox,
     TextEdit,
     Slider,
@@ -67,6 +68,7 @@ pub(crate) struct WidgetProps {
     pub(crate) year: i32,
     pub(crate) month: u32,
     pub(crate) day: u32,
+    pub(crate) icon: String,
 }
 
 impl Default for WidgetProps {
@@ -83,6 +85,7 @@ impl Default for WidgetProps {
             year: 2024,
             month: 1,
             day: 1,
+            icon: "🖼️".into(),
         }
     }
 }

@@ -54,6 +54,14 @@ impl RadBuilderApp {
                     ..Default::default()
                 },
             ),
+            WidgetKind::ImageTextButton => (
+                vec2(200.0, 36.0),
+                WidgetProps {
+                    text: "Button".into(),
+                    icon: "🖼️".into(),
+                    ..Default::default()
+                },
+            ),
             WidgetKind::Checkbox => (
                 vec2(160.0, 28.0),
                 WidgetProps {
@@ -184,6 +192,7 @@ impl RadBuilderApp {
                 let ghost_size = match kind {
                     WidgetKind::Label => vec2(140.0, 24.0),
                     WidgetKind::Button => vec2(160.0, 32.0),
+                    WidgetKind::ImageTextButton => vec2(200.0, 36.0),
                     WidgetKind::Checkbox => vec2(160.0, 28.0),
                     WidgetKind::TextEdit => vec2(220.0, 36.0),
                     WidgetKind::Slider => vec2(220.0, 24.0),
@@ -323,6 +332,12 @@ impl RadBuilderApp {
             WidgetKind::Button => {
                 ui.add_sized(w.size, egui::Button::new(&w.props.text));
             }
+            WidgetKind::ImageTextButton => {
+                // We keep it simple: icon + text as the button label.
+                // Users can change `icon` to any emoji / short string.
+                let label = format!("{}  {}", w.props.icon, w.props.text);
+                ui.add_sized(w.size, egui::Button::new(label));
+            }
             WidgetKind::Checkbox => {
                 let mut checked = w.props.checked;
                 ui.add_sized(w.size, egui::Checkbox::new(&mut checked, &w.props.text));
@@ -433,6 +448,7 @@ impl RadBuilderApp {
 
         self.palette_item(ui, "Label", WidgetKind::Label);
         self.palette_item(ui, "Button", WidgetKind::Button);
+        self.palette_item(ui, "Image + Text Button", WidgetKind::ImageTextButton);
         self.palette_item(ui, "Checkbox", WidgetKind::Checkbox);
         self.palette_item(ui, "TextEdit", WidgetKind::TextEdit);
         self.palette_item(ui, "Slider", WidgetKind::Slider);
@@ -467,9 +483,11 @@ impl RadBuilderApp {
             ui.label(format!("ID: {:?}", w.id));
             ui.add_space(6.0);
             match w.kind {
-                WidgetKind::Label
-                | WidgetKind::Button
-                | WidgetKind::TextEdit
+                WidgetKind::Label | WidgetKind::Button | WidgetKind::ImageTextButton => {
+                    ui.label("Text");
+                    ui.text_edit_singleline(&mut w.props.text);
+                }
+                WidgetKind::TextEdit
                 | WidgetKind::Checkbox
                 | WidgetKind::Slider
                 | WidgetKind::Link
@@ -486,6 +504,10 @@ impl RadBuilderApp {
                 | WidgetKind::Separator => {}
             }
             match w.kind {
+                WidgetKind::ImageTextButton => {
+                    ui.label("Icon / Emoji");
+                    ui.text_edit_singleline(&mut w.props.icon);
+                }
                 WidgetKind::Checkbox => {
                     ui.checkbox(&mut w.props.checked, "checked");
                 }
@@ -768,6 +790,23 @@ impl RadBuilderApp {
                         pos.x, pos.y, size.x, size.y, size.x, size.y, escape(&w.props.text)
                     ));
                 }
+                WidgetKind::ImageTextButton => {
+                    out.push_str(&format!(
+                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size(\
+							ui.min_rect().min + egui::vec2({x:.1},{y:.1}), \
+							egui::vec2({w:.1},{h:.1})), |ui| {{ \
+							ui.add_sized(egui::vec2({w:.1},{h:.1}), \
+								egui::Button::new(format!(\"{{}}  {{}}\", \"{icon}\", \"{text}\")) \
+							); \
+						}});\n",
+                        x = pos.x,
+                        y = pos.y,
+                        w = size.x,
+                        h = size.y,
+                        icon = escape(&w.props.icon),
+                        text = escape(&w.props.text),
+                    ));
+                }
                 WidgetKind::Checkbox => {
                     out.push_str(&format!(
                         "    ui.allocate_ui_at_rect(egui::Rect::from_min_size(ui.min_rect().min + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ ui.checkbox(&mut state.checked_{}, \"{}\"); }});\n",
@@ -792,7 +831,6 @@ impl RadBuilderApp {
                         pos.x, pos.y, size.x, size.y, size.x, size.y, w.id
                     ));
                 }
-                // NEW generated code:
                 WidgetKind::RadioGroup => {
                     let items_code = if w.props.items.is_empty() {
                         "\"Item\".to_string()".to_owned()
