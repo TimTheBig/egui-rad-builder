@@ -39,6 +39,15 @@ egui_extras = { version = "0.33.0", features = ["chrono"] }
 - add panels
 - add menus
 - add support for multiple 'pages', 'screens', or 'tabs'
+- add support for columns
 - flesh out font, scaling, color options in inspector
 - add https://github.com/trevyn/egui_node_graph2
 - add https://github.com/LennysLounge/egui_ltreeview
+- add angle selector, password field, 
+- implement support for rotation
+- implement support for modals
+- implement support for tooltips
+- implement support for right-click menus
+- implement support for scenes
+- implement support for tables
+- implement settings for window title, closeable, collapsible, resizeable, constrained, horizontal scroll, vertical scroll, anchoring
