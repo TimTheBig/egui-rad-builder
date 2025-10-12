@@ -175,6 +175,24 @@ impl RadBuilderApp {
                     ..Default::default()
                 },
             ),
+            WidgetKind::Tree => {
+                let mut p = WidgetProps {
+                    text: "Tree".into(),
+                    ..Default::default()
+                };
+                // Indentation (two spaces = one level) to define hierarchy:
+                p.items = vec![
+                    "Animals".into(),
+                    "  Mammals".into(),
+                    "    Dogs".into(),
+                    "    Cats".into(),
+                    "  Birds".into(),
+                    "Plants".into(),
+                    "  Trees".into(),
+                    "  Flowers".into(),
+                ];
+                (vec2(260.0, 200.0), p)
+            }
         };
 
         let mut pos = at - size * 0.5;
@@ -224,6 +242,7 @@ impl RadBuilderApp {
                     WidgetKind::DatePicker => vec2(200.0, 28.0),
                     WidgetKind::AngleSelector => vec2(220.0, 28.0),
                     WidgetKind::Password => vec2(220.0, 36.0),
+                    WidgetKind::Tree => vec2(260.0, 200.0),
                 };
                 let ghost = Rect::from_center_size(mouse, ghost_size);
                 let layer = egui::LayerId::new(egui::Order::Tooltip, Id::new("ghost"));
@@ -466,6 +485,80 @@ impl RadBuilderApp {
                 ui.add_sized(w.size, resp);
                 w.props.text = buf;
             }
+            WidgetKind::Tree => {
+                // Parse items (two leading spaces per level) into nodes:
+                #[derive(Clone)]
+                struct Node {
+                    label: String,
+                    children: Vec<Node>,
+                }
+
+                fn parse_nodes(lines: &[String]) -> Vec<Node> {
+                    // (indent, label)
+                    let mut items: Vec<(usize, String)> = lines
+                        .iter()
+                        .map(|s| {
+                            let indent = s.chars().take_while(|c| *c == ' ').count() / 2;
+                            (indent, s.trim().to_string())
+                        })
+                        .collect();
+                    // Remove empties
+                    items.retain(|(_, s)| !s.is_empty());
+
+                    fn build<I: Iterator<Item = (usize, String)>>(
+                        iter: &mut std::iter::Peekable<I>,
+                        level: usize,
+                    ) -> Vec<Node> {
+                        let mut out = Vec::new();
+                        while let Some((ind, _)) = iter.peek().cloned() {
+                            if ind < level {
+                                break;
+                            }
+                            if ind > level {
+                                // child of previous; let outer loop handle
+                                break;
+                            }
+                            // ind == level
+                            let (_, label) = iter.next().unwrap();
+                            // gather children (ind + 1)
+                            let children = build(iter, level + 1);
+                            out.push(Node { label, children });
+                        }
+                        out
+                    }
+
+                    let mut it = items.into_iter().peekable();
+                    build(&mut it, 0)
+                }
+
+                fn show_nodes(ui: &mut egui::Ui, nodes: &[Node]) {
+                    for n in nodes {
+                        if n.children.is_empty() {
+                            ui.label(&n.label);
+                        } else {
+                            ui.collapsing(&n.label, |ui| {
+                                show_nodes(ui, &n.children);
+                            });
+                        }
+                    }
+                }
+
+                let lines = if w.props.items.is_empty() {
+                    vec!["Root".into(), "  Child".into()]
+                } else {
+                    w.props.items.clone()
+                };
+                let nodes = parse_nodes(&lines);
+
+                // Constrain content to the widget rect:
+                egui::Frame::NONE.show(ui, |ui| {
+                    egui::ScrollArea::vertical()
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            show_nodes(ui, &nodes);
+                        });
+                });
+            }
         });
     }
 
@@ -499,6 +592,7 @@ impl RadBuilderApp {
         self.palette_item(ui, "Date Picker", WidgetKind::DatePicker);
         self.palette_item(ui, "Angle Selector", WidgetKind::AngleSelector);
         self.palette_item(ui, "Password", WidgetKind::Password);
+        self.palette_item(ui, "Tree", WidgetKind::Tree);
 
         ui.separator();
         ui.label("Tips:");
@@ -521,17 +615,18 @@ impl RadBuilderApp {
             ui.label(format!("ID: {:?}", w.id));
             ui.add_space(6.0);
             match w.kind {
-                WidgetKind::Label | WidgetKind::Button | WidgetKind::ImageTextButton => {
-                    ui.label("Text");
-                    ui.text_edit_singleline(&mut w.props.text);
-                }
-                WidgetKind::TextEdit
+                WidgetKind::Label
+                | WidgetKind::Button
+                | WidgetKind::ImageTextButton
+                | WidgetKind::TextEdit
                 | WidgetKind::Checkbox
                 | WidgetKind::Slider
                 | WidgetKind::Link
                 | WidgetKind::Hyperlink
                 | WidgetKind::SelectableLabel
                 | WidgetKind::CollapsingHeader
+                | WidgetKind::Password
+                | WidgetKind::AngleSelector
                 | WidgetKind::DatePicker => {
                     ui.label("Text");
                     ui.text_edit_singleline(&mut w.props.text);
@@ -539,11 +634,8 @@ impl RadBuilderApp {
                 WidgetKind::ProgressBar
                 | WidgetKind::RadioGroup
                 | WidgetKind::ComboBox
+                | WidgetKind::Tree
                 | WidgetKind::Separator => {}
-                WidgetKind::Password | WidgetKind::AngleSelector => {
-                    ui.label("Text");
-                    ui.text_edit_singleline(&mut w.props.text);
-                }
             }
             match w.kind {
                 WidgetKind::ImageTextButton => {
@@ -568,27 +660,26 @@ impl RadBuilderApp {
                     ui.label("URL");
                     ui.text_edit_singleline(&mut w.props.url);
                 }
-                WidgetKind::RadioGroup | WidgetKind::ComboBox => {
-                    ui.label("Items (one per line)");
+                WidgetKind::RadioGroup | WidgetKind::ComboBox | WidgetKind::Tree => {
+                    ui.label(match w.kind {
+                        WidgetKind::Tree => "Nodes (indent with spaces; 2 spaces per level)",
+                        _ => "Items (one per line)",
+                    });
                     let mut buf = w.props.items.join("\n");
                     if ui
                         .add(
                             egui::TextEdit::multiline(&mut buf)
-                                .desired_rows(4)
+                                .desired_rows(8)
                                 .desired_width(f32::INFINITY),
                         )
                         .changed()
                     {
-                        w.props.items = buf
-                            .lines()
-                            .map(|s| s.trim().to_string())
-                            .filter(|s| !s.is_empty())
-                            .collect();
+                        w.props.items = buf.lines().map(|s| s.to_string()).collect();
                         if w.props.selected >= w.props.items.len() {
                             w.props.selected = w.props.items.len().saturating_sub(1);
                         }
                     }
-                    if !w.props.items.is_empty() {
+                    if !matches!(w.kind, WidgetKind::Tree) && !w.props.items.is_empty() {
                         ui.horizontal(|ui| {
                             ui.label("Selected index");
                             ui.add(
@@ -732,6 +823,25 @@ impl RadBuilderApp {
         out.push_str("use eframe::egui;\n");
         out.push_str("use egui_extras::DatePickerButton;\n");
         out.push_str("use chrono::NaiveDate;\n\n");
+
+        let has_tree = self
+            .project
+            .widgets
+            .iter()
+            .any(|w| matches!(w.kind, WidgetKind::Tree));
+        if has_tree {
+            out.push_str(
+                "#[derive(Clone)]\n\
+				 struct GenTreeNode { label: String, children: Vec<GenTreeNode> }\n\
+				 \n\
+				 fn gen_show_tree(ui: &mut egui::Ui, nodes: &[GenTreeNode]) {\n\
+				 \tfor n in nodes {\n\
+				 \t\tif n.children.is_empty() { ui.label(&n.label); }\n\
+				 \t\telse { ui.collapsing(&n.label, |ui| gen_show_tree(ui, &n.children)); }\n\
+				 \t}\n\
+				 }\n\n",
+            );
+        }
 
         out.push_str("struct GeneratedState {\n");
         for w in &self.project.widgets {
@@ -1023,6 +1133,95 @@ impl RadBuilderApp {
 						x=pos.x,y=pos.y,w=size.x,h=size.y,id=w.id,
 						min=w.props.min, max=w.props.max, label=escape(&w.props.text)
 					));
+                }
+                WidgetKind::Tree => {
+                    // Helpers live only in the generator (not emitted), so we can use any Rust we want here:
+                    #[derive(Clone)]
+                    struct Node {
+                        label: String,
+                        children: Vec<Node>,
+                    }
+
+                    fn parse_nodes(lines: &[String]) -> Vec<Node> {
+                        let items: Vec<(usize, String)> = lines
+                            .iter()
+                            .map(|s| {
+                                let indent = s.chars().take_while(|c| *c == ' ').count() / 2;
+                                (indent, s.trim().to_string())
+                            })
+                            .filter(|(_, s)| !s.is_empty())
+                            .collect();
+
+                        fn build<I: Iterator<Item = (usize, String)>>(
+                            it: &mut std::iter::Peekable<I>,
+                            level: usize,
+                        ) -> Vec<Node> {
+                            let mut out = Vec::new();
+                            while let Some((ind, _)) = it.peek().cloned() {
+                                if ind < level {
+                                    break;
+                                }
+                                if ind > level {
+                                    break;
+                                }
+                                let (_, label) = it.next().unwrap();
+                                let children = build(it, level + 1);
+                                out.push(Node { label, children });
+                            }
+                            out
+                        }
+
+                        let mut it = items.into_iter().peekable();
+                        build(&mut it, 0)
+                    }
+
+                    fn nodes_to_literal(nodes: &[Node]) -> String {
+                        fn one(n: &Node) -> String {
+                            let kids = if n.children.is_empty() {
+                                "vec![]".to_string()
+                            } else {
+                                format!(
+                                    "vec![{}]",
+                                    n.children.iter().map(one).collect::<Vec<_>>().join(", ")
+                                )
+                            };
+                            format!(
+                                "GenTreeNode {{ label: \"{}\".to_string(), children: {} }}",
+                                crate::widget::escape(&n.label),
+                                kids
+                            )
+                        }
+                        format!(
+                            "vec![{}]",
+                            nodes.iter().map(one).collect::<Vec<_>>().join(", ")
+                        )
+                    }
+
+                    let items = if w.props.items.is_empty() {
+                        vec!["Root".into(), "  Child".into()]
+                    } else {
+                        w.props.items.clone()
+                    };
+
+                    let nodes_literal = {
+                        let nodes = parse_nodes(&items);
+                        nodes_to_literal(&nodes)
+                    };
+
+                    out.push_str(&format!(
+                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size(\
+							ui.min_rect().min + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1})), |ui| {{ \
+							let nodes: Vec<GenTreeNode> = {nodes}; \
+							egui::ScrollArea::vertical().auto_shrink([false,false]).show(ui, |ui| {{ \
+								gen_show_tree(ui, &nodes); \
+							}}); \
+						}});\n",
+                        x = pos.x,
+                        y = pos.y,
+                        w = size.x,
+                        h = size.y,
+                        nodes = nodes_literal
+                    ));
                 }
             }
         }

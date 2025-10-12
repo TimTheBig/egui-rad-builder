@@ -52,6 +52,7 @@ pub(crate) enum WidgetKind {
     DatePicker,
     AngleSelector,
     Password,
+    Tree,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

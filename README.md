@@ -42,7 +42,7 @@ egui_extras = { version = "0.33.0", features = ["chrono"] }
 - add support for columns
 - flesh out font, scaling, color options in inspector
 - add https://github.com/trevyn/egui_node_graph2
-- add https://github.com/LennysLounge/egui_ltreeview
+- add https://github.com/LennysLounge/egui_ltreeview ?
 - implement support for rotation
 - implement support for modals
 - implement support for tooltips
