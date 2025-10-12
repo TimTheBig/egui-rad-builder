@@ -158,6 +158,23 @@ impl RadBuilderApp {
                     ..Default::default()
                 },
             ),
+            WidgetKind::AngleSelector => (
+                vec2(220.0, 28.0),
+                WidgetProps {
+                    text: "Angle (deg)".into(),
+                    min: 0.0,
+                    max: 360.0,
+                    value: 45.0,
+                    ..Default::default()
+                },
+            ),
+            WidgetKind::Password => (
+                vec2(220.0, 36.0),
+                WidgetProps {
+                    text: "password".into(),
+                    ..Default::default()
+                },
+            ),
         };
 
         let mut pos = at - size * 0.5;
@@ -205,6 +222,8 @@ impl RadBuilderApp {
                     WidgetKind::Separator => vec2(220.0, 8.0),
                     WidgetKind::CollapsingHeader => vec2(260.0, 80.0),
                     WidgetKind::DatePicker => vec2(200.0, 28.0),
+                    WidgetKind::AngleSelector => vec2(220.0, 28.0),
+                    WidgetKind::Password => vec2(220.0, 36.0),
                 };
                 let ghost = Rect::from_center_size(mouse, ghost_size);
                 let layer = egui::LayerId::new(egui::Order::Tooltip, Id::new("ghost"));
@@ -430,6 +449,23 @@ impl RadBuilderApp {
                 w.props.month = date.month();
                 w.props.day = date.day();
             }
+            WidgetKind::AngleSelector => {
+                // Angle editor as slider in degrees
+                let mut v = w.props.value.clamp(w.props.min, w.props.max);
+                let slider = egui::Slider::new(&mut v, w.props.min..=w.props.max)
+                    .suffix("°")
+                    .text(&w.props.text);
+                ui.add_sized(w.size, slider);
+                w.props.value = v;
+            }
+            WidgetKind::Password => {
+                let mut buf = w.props.text.clone();
+                let resp = egui::TextEdit::singleline(&mut buf)
+                    .password(true)
+                    .hint_text("password");
+                ui.add_sized(w.size, resp);
+                w.props.text = buf;
+            }
         });
     }
 
@@ -461,6 +497,8 @@ impl RadBuilderApp {
         self.palette_item(ui, "Separator", WidgetKind::Separator);
         self.palette_item(ui, "Collapsing Header", WidgetKind::CollapsingHeader);
         self.palette_item(ui, "Date Picker", WidgetKind::DatePicker);
+        self.palette_item(ui, "Angle Selector", WidgetKind::AngleSelector);
+        self.palette_item(ui, "Password", WidgetKind::Password);
 
         ui.separator();
         ui.label("Tips:");
@@ -502,6 +540,10 @@ impl RadBuilderApp {
                 | WidgetKind::RadioGroup
                 | WidgetKind::ComboBox
                 | WidgetKind::Separator => {}
+                WidgetKind::Password | WidgetKind::AngleSelector => {
+                    ui.label("Text");
+                    ui.text_edit_singleline(&mut w.props.text);
+                }
             }
             match w.kind {
                 WidgetKind::ImageTextButton => {
@@ -569,6 +611,20 @@ impl RadBuilderApp {
                         ui.add(egui::DragValue::new(&mut w.props.day).range(1..=31));
                     });
                 }
+                WidgetKind::AngleSelector => {
+                    ui.add(
+                        egui::Slider::new(&mut w.props.value, w.props.min..=w.props.max)
+                            .text("value (deg)"),
+                    );
+                    ui.add(
+                        egui::Slider::new(&mut w.props.min, -1080.0..=w.props.max)
+                            .text("min (deg)"),
+                    );
+                    ui.add(
+                        egui::Slider::new(&mut w.props.max, w.props.min..=1080.0).text("max (deg)"),
+                    );
+                }
+                WidgetKind::Password => { /* no extra props */ }
                 _ => {}
             }
             ui.separator();
@@ -692,6 +748,8 @@ impl RadBuilderApp {
                     out.push_str(&format!("    open_{}: bool,\n", w.id))
                 }
                 WidgetKind::DatePicker => out.push_str(&format!("    date_{}: NaiveDate,\n", w.id)),
+                WidgetKind::Password => out.push_str(&format!("    pass_{}: String,\n", w.id)),
+                WidgetKind::AngleSelector => out.push_str(&format!("    angle_{}: f32,\n", w.id)),
                 _ => {}
             }
         }
@@ -755,6 +813,19 @@ impl RadBuilderApp {
                     out.push_str(&format!(
                         "            date_{}: NaiveDate::from_ymd_opt({}, {}, {}).unwrap(),\n",
                         w.id, y, m, d
+                    ));
+                }
+                WidgetKind::Password => {
+                    out.push_str(&format!(
+                        "            pass_{}: \"{}\".to_owned(),\n",
+                        w.id,
+                        widget::escape(&w.props.text)
+                    ));
+                }
+                WidgetKind::AngleSelector => {
+                    out.push_str(&format!(
+                        "            angle_{}: {:.3},\n",
+                        w.id, w.props.value
                     ));
                 }
                 _ => {}
@@ -925,6 +996,33 @@ impl RadBuilderApp {
                         "    ui.allocate_ui_at_rect(egui::Rect::from_min_size(ui.min_rect().min + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ ui.horizontal(|ui| {{ ui.label(\"{}\"); ui.add(DatePickerButton::new(&mut state.date_{})); }}); }});\n",
                         pos.x, pos.y, size.x, size.y, escape(&w.props.text), w.id
                     ));
+                }
+                WidgetKind::Password => {
+                    out.push_str(&format!(
+                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size(\
+							ui.min_rect().min + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1})), |ui| {{ \
+							ui.add_sized(egui::vec2({w:.1},{h:.1}), \
+								egui::TextEdit::singleline(&mut state.pass_{id}).password(true).hint_text(\"password\") \
+							); \
+						}});\n",
+                        x = pos.x,
+                        y = pos.y,
+                        w = size.x,
+                        h = size.y,
+                        id = w.id
+                    ));
+                }
+                WidgetKind::AngleSelector => {
+                    out.push_str(&format!(
+						"    ui.allocate_ui_at_rect(egui::Rect::from_min_size(\
+							ui.min_rect().min + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1})), |ui| {{ \
+							ui.add_sized(egui::vec2({w:.1},{h:.1}), \
+								egui::Slider::new(&mut state.angle_{id}, {min:.3}..={max:.3}).suffix(\"°\").text(\"{label}\") \
+							); \
+						}});\n",
+						x=pos.x,y=pos.y,w=size.x,h=size.y,id=w.id,
+						min=w.props.min, max=w.props.max, label=escape(&w.props.text)
+					));
                 }
             }
         }

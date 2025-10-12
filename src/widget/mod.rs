@@ -50,6 +50,8 @@ pub(crate) enum WidgetKind {
     Separator,
     CollapsingHeader,
     DatePicker,
+    AngleSelector,
+    Password,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
