@@ -320,246 +320,291 @@ impl RadBuilderApp {
     ) {
         let rect = Rect::from_min_size(canvas_rect.min + w.pos.to_vec2(), w.size);
 
-        let move_resp = ui.allocate_rect(rect, Sense::click_and_drag());
-        if move_resp.clicked() {
-            *selected = Some(w.id);
-        }
-        if move_resp.dragged() {
-            let delta = move_resp.drag_delta();
-            w.pos += delta;
-            w.pos = snap_pos_with_grid(w.pos, grid);
-        }
-
-        let handle_size = 10.0;
-        let handle_rect = Rect::from_min_size(
-            rect.max - vec2(handle_size, handle_size),
-            vec2(handle_size, handle_size),
-        );
-        let handle_resp = ui.allocate_rect(handle_rect, Sense::click_and_drag());
-        if handle_resp.dragged() {
-            let delta = handle_resp.drag_delta();
-            w.size += delta;
-            w.size.x = w.size.x.max(20.0);
-            w.size.y = w.size.y.max(16.0);
-        }
-
-        let painter = ui.painter();
-        if *selected == Some(w.id) {
-            painter.rect_stroke(
-                rect,
-                CornerRadius::same(6),
-                Stroke::new(2.0, Color32::LIGHT_BLUE),
-                egui::StrokeKind::Outside,
-            );
-        } else {
-            painter.rect_stroke(
-                rect,
-                CornerRadius::same(6),
-                Stroke::new(1.0, Color32::from_gray(90)),
-                egui::StrokeKind::Outside,
-            );
-        }
-        painter.rect_filled(handle_rect, 2.0, Color32::from_rgb(100, 160, 255));
-
-        ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| match w.kind {
-            WidgetKind::Label => {
-                ui.vertical_centered(|ui| {
-                    ui.label(&w.props.text);
-                });
-            }
-            WidgetKind::Button => {
-                ui.add_sized(w.size, egui::Button::new(&w.props.text));
-            }
-            WidgetKind::ImageTextButton => {
-                // We keep it simple: icon + text as the button label.
-                // Users can change `icon` to any emoji / short string.
-                let label = format!("{}  {}", w.props.icon, w.props.text);
-                ui.add_sized(w.size, egui::Button::new(label));
-            }
-            WidgetKind::Checkbox => {
-                let mut checked = w.props.checked;
-                ui.add_sized(w.size, egui::Checkbox::new(&mut checked, &w.props.text));
-                w.props.checked = checked;
-            }
-            WidgetKind::TextEdit => {
-                let mut buf = w.props.text.clone();
-                let resp = egui::TextEdit::singleline(&mut buf).hint_text("text");
-                ui.add_sized(w.size, resp);
-                w.props.text = buf;
-            }
-            WidgetKind::Slider => {
-                let mut v = w.props.value;
-                let slider =
-                    egui::Slider::new(&mut v, w.props.min..=w.props.max).text(&w.props.text);
-                ui.add_sized(w.size, slider);
-                w.props.value = v;
-            }
-            WidgetKind::ProgressBar => {
-                let bar = egui::ProgressBar::new(w.props.value.clamp(0.0, 1.0)).show_percentage();
-                ui.add_sized(w.size, bar);
-            }
-            // NEW drawings:
-            WidgetKind::RadioGroup => {
-                let mut sel = w.props.selected.min(w.props.items.len().saturating_sub(1));
-                ui.vertical(|ui| {
-                    for (i, it) in w.props.items.iter().enumerate() {
-                        if ui.add(egui::RadioButton::new(sel == i, it)).clicked() {
-                            sel = i;
-                        }
-                    }
-                });
-                w.props.selected = sel;
-            }
-            WidgetKind::Link => {
-                let _ = ui.link(&w.props.text);
-            }
-            WidgetKind::Hyperlink => {
-                ui.hyperlink_to(&w.props.text, &w.props.url);
-            }
-            WidgetKind::SelectableLabel => {
-                let mut on = w.props.checked;
-                if ui
-                    .add(egui::Button::selectable(on, &w.props.text))
-                    .clicked()
-                {
-                    on = !on;
+        // 1) Draw the actual widget first
+        ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
+            match w.kind {
+                WidgetKind::Label => {
+                    ui.vertical_centered(|ui| {
+                        ui.label(&w.props.text);
+                    });
                 }
-                w.props.checked = on;
-            }
-            WidgetKind::ComboBox => {
-                let items = if w.props.items.is_empty() {
-                    vec!["Item".into()]
-                } else {
-                    w.props.items.clone()
-                };
-                let mut sel = w.props.selected.min(items.len() - 1);
-                egui::ComboBox::from_id_salt(w.id)
-                    .width(w.size.x)
-                    .selected_text(items[sel].clone())
-                    .show_ui(ui, |ui| {
-                        for (i, it) in items.iter().enumerate() {
-                            ui.selectable_value(&mut sel, i, it.clone());
+                WidgetKind::Button => {
+                    ui.add_sized(w.size, egui::Button::new(&w.props.text));
+                }
+                WidgetKind::ImageTextButton => {
+                    // We keep it simple: icon + text as the button label.
+                    // Users can change `icon` to any emoji / short string.
+                    let label = format!("{}  {}", w.props.icon, w.props.text);
+                    ui.add_sized(w.size, egui::Button::new(label));
+                }
+                WidgetKind::Checkbox => {
+                    let mut checked = w.props.checked;
+                    ui.add_sized(w.size, egui::Checkbox::new(&mut checked, &w.props.text));
+                    w.props.checked = checked;
+                }
+                WidgetKind::TextEdit => {
+                    let mut buf = w.props.text.clone();
+                    let resp = egui::TextEdit::singleline(&mut buf).hint_text("text");
+                    ui.add_sized(w.size, resp);
+                    w.props.text = buf;
+                }
+                WidgetKind::Slider => {
+                    let mut v = w.props.value;
+                    let slider =
+                        egui::Slider::new(&mut v, w.props.min..=w.props.max).text(&w.props.text);
+                    ui.add_sized(w.size, slider);
+                    w.props.value = v;
+                }
+                WidgetKind::ProgressBar => {
+                    let bar =
+                        egui::ProgressBar::new(w.props.value.clamp(0.0, 1.0)).show_percentage();
+                    ui.add_sized(w.size, bar);
+                }
+                WidgetKind::RadioGroup => {
+                    let mut sel = w.props.selected.min(w.props.items.len().saturating_sub(1));
+                    ui.vertical(|ui| {
+                        for (i, it) in w.props.items.iter().enumerate() {
+                            if ui.add(egui::RadioButton::new(sel == i, it)).clicked() {
+                                sel = i;
+                            }
                         }
                     });
-                w.props.selected = sel;
-            }
-            WidgetKind::Separator => {
-                ui.separator();
-            }
-            WidgetKind::CollapsingHeader => {
-                egui::CollapsingHeader::new(&w.props.text)
-                    .default_open(w.props.checked)
-                    .show(ui, |ui| {
-                        ui.label("… place your inner content here …");
-                    });
-            }
-            WidgetKind::DatePicker => {
-                let mut date = NaiveDate::from_ymd_opt(
-                    w.props.year,
-                    w.props.month.clamp(1, 12),
-                    w.props.day.clamp(1, 28), // simple clamp
-                )
-                .unwrap_or_else(|| NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());
-                ui.horizontal(|ui| {
-                    ui.label(&w.props.text);
-                    ui.add(DatePickerButton::new(&mut date));
-                });
-                w.props.year = date.year();
-                w.props.month = date.month();
-                w.props.day = date.day();
-            }
-            WidgetKind::AngleSelector => {
-                // Angle editor as slider in degrees
-                let mut v = w.props.value.clamp(w.props.min, w.props.max);
-                let slider = egui::Slider::new(&mut v, w.props.min..=w.props.max)
-                    .suffix("°")
-                    .text(&w.props.text);
-                ui.add_sized(w.size, slider);
-                w.props.value = v;
-            }
-            WidgetKind::Password => {
-                let mut buf = w.props.text.clone();
-                let resp = egui::TextEdit::singleline(&mut buf)
-                    .password(true)
-                    .hint_text("password");
-                ui.add_sized(w.size, resp);
-                w.props.text = buf;
-            }
-            WidgetKind::Tree => {
-                // Parse items (two leading spaces per level) into nodes:
-                #[derive(Clone)]
-                struct Node {
-                    label: String,
-                    children: Vec<Node>,
+                    w.props.selected = sel;
                 }
-
-                fn parse_nodes(lines: &[String]) -> Vec<Node> {
-                    // (indent, label)
-                    let mut items: Vec<(usize, String)> = lines
-                        .iter()
-                        .map(|s| {
-                            let indent = s.chars().take_while(|c| *c == ' ').count() / 2;
-                            (indent, s.trim().to_string())
-                        })
-                        .collect();
-                    // Remove empties
-                    items.retain(|(_, s)| !s.is_empty());
-
-                    fn build<I: Iterator<Item = (usize, String)>>(
-                        iter: &mut std::iter::Peekable<I>,
-                        level: usize,
-                    ) -> Vec<Node> {
-                        let mut out = Vec::new();
-                        while let Some((ind, _)) = iter.peek().cloned() {
-                            if ind < level {
-                                break;
-                            }
-                            if ind > level {
-                                // child of previous; let outer loop handle
-                                break;
-                            }
-                            // ind == level
-                            let (_, label) = iter.next().unwrap();
-                            // gather children (ind + 1)
-                            let children = build(iter, level + 1);
-                            out.push(Node { label, children });
-                        }
-                        out
+                WidgetKind::Link => {
+                    let _ = ui.link(&w.props.text);
+                }
+                WidgetKind::Hyperlink => {
+                    ui.hyperlink_to(&w.props.text, &w.props.url);
+                }
+                WidgetKind::SelectableLabel => {
+                    let mut on = w.props.checked;
+                    if ui
+                        .add(egui::Button::selectable(on, &w.props.text))
+                        .clicked()
+                    {
+                        on = !on;
                     }
-
-                    let mut it = items.into_iter().peekable();
-                    build(&mut it, 0)
+                    w.props.checked = on;
                 }
-
-                fn show_nodes(ui: &mut egui::Ui, nodes: &[Node]) {
-                    for n in nodes {
-                        if n.children.is_empty() {
-                            ui.label(&n.label);
-                        } else {
-                            ui.collapsing(&n.label, |ui| {
-                                show_nodes(ui, &n.children);
-                            });
-                        }
-                    }
-                }
-
-                let lines = if w.props.items.is_empty() {
-                    vec!["Root".into(), "  Child".into()]
-                } else {
-                    w.props.items.clone()
-                };
-                let nodes = parse_nodes(&lines);
-
-                // Constrain content to the widget rect:
-                egui::Frame::NONE.show(ui, |ui| {
-                    egui::ScrollArea::vertical()
-                        .auto_shrink([false, false])
-                        .show(ui, |ui| {
-                            show_nodes(ui, &nodes);
+                WidgetKind::ComboBox => {
+                    let items = if w.props.items.is_empty() {
+                        vec!["Item".into()]
+                    } else {
+                        w.props.items.clone()
+                    };
+                    let mut sel = w.props.selected.min(items.len() - 1);
+                    egui::ComboBox::from_id_salt(w.id)
+                        .width(w.size.x)
+                        .selected_text(items[sel].clone())
+                        .show_ui(ui, |ui| {
+                            for (i, it) in items.iter().enumerate() {
+                                ui.selectable_value(&mut sel, i, it.clone());
+                            }
                         });
-                });
+                    w.props.selected = sel;
+                }
+                WidgetKind::Separator => {
+                    ui.separator();
+                }
+                WidgetKind::CollapsingHeader => {
+                    egui::CollapsingHeader::new(&w.props.text)
+                        .default_open(w.props.checked)
+                        .show(ui, |ui| {
+                            ui.label("… place your inner content here …");
+                        });
+                }
+                WidgetKind::DatePicker => {
+                    let mut date = NaiveDate::from_ymd_opt(
+                        w.props.year,
+                        w.props.month.clamp(1, 12),
+                        w.props.day.clamp(1, 28), // simple clamp
+                    )
+                    .unwrap_or_else(|| NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());
+                    ui.horizontal(|ui| {
+                        ui.label(&w.props.text);
+                        ui.add(DatePickerButton::new(&mut date));
+                    });
+                    w.props.year = date.year();
+                    w.props.month = date.month();
+                    w.props.day = date.day();
+                }
+                WidgetKind::AngleSelector => {
+                    // Angle editor as slider in degrees
+                    let mut v = w.props.value.clamp(w.props.min, w.props.max);
+                    let slider = egui::Slider::new(&mut v, w.props.min..=w.props.max)
+                        .suffix("°")
+                        .text(&w.props.text);
+                    ui.add_sized(w.size, slider);
+                    w.props.value = v;
+                }
+                WidgetKind::Password => {
+                    let mut buf = w.props.text.clone();
+                    let resp = egui::TextEdit::singleline(&mut buf)
+                        .password(true)
+                        .hint_text("password");
+                    ui.add_sized(w.size, resp);
+                    w.props.text = buf;
+                }
+                WidgetKind::Tree => {
+                    // Parse items (two leading spaces per level) into nodes:
+                    #[derive(Clone)]
+                    struct Node {
+                        label: String,
+                        children: Vec<Node>,
+                    }
+
+                    fn parse_nodes(lines: &[String]) -> Vec<Node> {
+                        // (indent, label)
+                        let mut items: Vec<(usize, String)> = lines
+                            .iter()
+                            .map(|s| {
+                                let indent = s.chars().take_while(|c| *c == ' ').count() / 2;
+                                (indent, s.trim().to_string())
+                            })
+                            .collect();
+                        // Remove empties
+                        items.retain(|(_, s)| !s.is_empty());
+
+                        fn build<I: Iterator<Item = (usize, String)>>(
+                            iter: &mut std::iter::Peekable<I>,
+                            level: usize,
+                        ) -> Vec<Node> {
+                            let mut out = Vec::new();
+                            while let Some((ind, _)) = iter.peek().cloned() {
+                                if ind < level {
+                                    break;
+                                }
+                                if ind > level {
+                                    // child of previous; let outer loop handle
+                                    break;
+                                }
+                                // ind == level
+                                let (_, label) = iter.next().unwrap();
+                                // gather children (ind + 1)
+                                let children = build(iter, level + 1);
+                                out.push(Node { label, children });
+                            }
+                            out
+                        }
+
+                        let mut it = items.into_iter().peekable();
+                        build(&mut it, 0)
+                    }
+
+                    fn show_nodes(ui: &mut egui::Ui, nodes: &[Node]) {
+                        for n in nodes {
+                            if n.children.is_empty() {
+                                ui.label(&n.label);
+                            } else {
+                                ui.collapsing(&n.label, |ui| {
+                                    show_nodes(ui, &n.children);
+                                });
+                            }
+                        }
+                    }
+
+                    let lines = if w.props.items.is_empty() {
+                        vec!["Root".into(), "  Child".into()]
+                    } else {
+                        w.props.items.clone()
+                    };
+                    let nodes = parse_nodes(&lines);
+
+                    // Constrain content to the widget rect:
+                    egui::Frame::NONE.show(ui, |ui| {
+                        egui::ScrollArea::vertical()
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| {
+                                show_nodes(ui, &nodes);
+                            });
+                    });
+                }
             }
         });
+        let is_edit_mode = ui
+            .ctx()
+            .data(|d| d.get_temp::<bool>(Id::new("edit_mode")))
+            .unwrap_or(true);
+
+        // Selection outline (purely visual)
+        let painter = ui.painter();
+        let stroke = if *selected == Some(w.id) {
+            Stroke::new(2.0, Color32::LIGHT_BLUE)
+        } else {
+            Stroke::new(1.0, Color32::from_gray(90))
+        };
+        painter.rect_stroke(
+            rect,
+            CornerRadius::same(6),
+            stroke,
+            egui::StrokeKind::Outside,
+        );
+
+        // 2) Edge ring hitboxes only when editing
+        if is_edit_mode {
+            let pad = 6.0; // <— thickness of the clickable edge
+            let expanded = rect.expand(pad); // larger than the control
+
+            // Build 4 edge rectangles that do NOT cover the interior of the widget:
+            let top = Rect::from_min_max(expanded.min, pos2(expanded.max.x, rect.min.y));
+            let bottom = Rect::from_min_max(pos2(expanded.min.x, rect.max.y), expanded.max);
+            let left = Rect::from_min_max(
+                pos2(expanded.min.x, rect.min.y),
+                pos2(rect.min.x, rect.max.y),
+            );
+            let right = Rect::from_min_max(
+                pos2(rect.max.x, rect.min.y),
+                pos2(expanded.max.x, rect.max.y),
+            );
+
+            // Interact with each edge. Any click selects; any drag moves the widget.
+            let mut any_clicked = false;
+            let mut drag_delta = egui::Vec2::ZERO;
+
+            for (i, edge) in [top, right, bottom, left].into_iter().enumerate() {
+                // Make the edge easy to discover: show a hover cursor
+                let id = ui.make_persistent_id(("edge", w.id, i as u8));
+                let resp = ui.interact(edge, id, Sense::click_and_drag());
+
+                if resp.hovered() {
+                    ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
+                }
+                if resp.clicked() {
+                    any_clicked = true;
+                }
+                if resp.dragged() {
+                    drag_delta += resp.drag_delta();
+                }
+            }
+
+            if any_clicked {
+                *selected = Some(w.id);
+            }
+            if drag_delta != egui::Vec2::ZERO {
+                w.pos += drag_delta;
+                w.pos = snap_pos_with_grid(w.pos, grid);
+            }
+
+            // 3) Resize handle (make it slightly bigger and offset to sit on the corner outside)
+            let handle = {
+                let hs = 12.0;
+                Rect::from_min_size(expanded.max - vec2(hs, hs), vec2(hs, hs))
+            };
+            let rid = ui.make_persistent_id(("resize", w.id));
+            let rresp = ui.interact(handle, rid, Sense::click_and_drag());
+            if rresp.hovered() {
+                ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeNwSe);
+            }
+            if rresp.dragged() {
+                let delta = rresp.drag_delta();
+                w.size += delta;
+                w.size.x = w.size.x.max(20.0);
+                w.size.y = w.size.y.max(16.0);
+            }
+            ui.painter()
+                .rect_filled(handle, 2.0, Color32::from_rgb(100, 160, 255));
+        }
     }
 
     fn snap_pos(&self, p: Pos2) -> Pos2 {
