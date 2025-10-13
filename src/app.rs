@@ -642,7 +642,7 @@ impl RadBuilderApp {
         ui.separator();
         ui.label("Tips:");
         ui.small(
-            "• Click a control to select it\n• Drag to move, drag the corner to resize\n• Snap-to-grid can be changed in Settings",
+            "• Click frame around control to select it\n• Drag to move, drag the corner to resize\n• Snap-to-grid can be changed in Settings",
         );
     }
 
