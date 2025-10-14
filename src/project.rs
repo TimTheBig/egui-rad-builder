@@ -20,7 +20,7 @@ impl Default for Project {
     fn default() -> Self {
         Self {
             widgets: Vec::new(),
-            canvas_size: vec2(1200.0, 800.0),
+            canvas_size: vec2(700.0, 600.0),
             panel_top_h: 80.0,
             panel_bottom_h: 80.0,
             panel_left_w: 220.0,
