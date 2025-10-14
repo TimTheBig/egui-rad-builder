@@ -10,6 +10,10 @@ pub(crate) struct Project {
     pub(crate) panel_bottom_h: f32,
     pub(crate) panel_left_w: f32,
     pub(crate) panel_right_w: f32,
+    pub(crate) panel_top_enabled: bool,
+    pub(crate) panel_bottom_enabled: bool,
+    pub(crate) panel_left_enabled: bool,
+    pub(crate) panel_right_enabled: bool,
 }
 
 impl Default for Project {
@@ -21,6 +25,10 @@ impl Default for Project {
             panel_bottom_h: 80.0,
             panel_left_w: 220.0,
             panel_right_w: 260.0,
+            panel_top_enabled: false,
+            panel_bottom_enabled: false,
+            panel_left_enabled: false,
+            panel_right_enabled: false,
         }
     }
 }

@@ -30,6 +30,7 @@ pub(crate) enum DockArea {
     Right,
     Center,
 }
+
 impl Default for DockArea {
     fn default() -> Self {
         DockArea::Free

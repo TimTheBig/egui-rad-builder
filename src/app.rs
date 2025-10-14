@@ -44,11 +44,12 @@ struct PanelRects {
 }
 
 impl RadBuilderApp {
-    fn panel_rects(&self, canvas: Rect) -> PanelRects {
-        let t = self.project.panel_top_h.max(0.0);
-        let b = self.project.panel_bottom_h.max(0.0);
-        let l = self.project.panel_left_w.max(0.0);
-        let r = self.project.panel_right_w.max(0.0);
+    fn panel_rects(&self,canvas:Rect)->PanelRects{
+        // Collapse sizes to 0 if panel is disabled
+        let t = if self.project.panel_top_enabled    { self.project.panel_top_h.max(0.0) }    else { 0.0 };
+        let b = if self.project.panel_bottom_enabled { self.project.panel_bottom_h.max(0.0) } else { 0.0 };
+        let l = if self.project.panel_left_enabled   { self.project.panel_left_w.max(0.0) }   else { 0.0 };
+        let r = if self.project.panel_right_enabled  { self.project.panel_right_w.max(0.0) }  else { 0.0 };
 
         let top = Rect::from_min_max(
             canvas.min,
@@ -75,6 +76,7 @@ impl RadBuilderApp {
             center,
         }
     }
+    
     fn area_rect_for(pr: &PanelRects, canvas: Rect, area: DockArea) -> Rect {
         match area {
             DockArea::Free => canvas,
@@ -274,13 +276,17 @@ impl RadBuilderApp {
 
     fn canvas_ui(&mut self, ui: &mut egui::Ui) {
         // The design canvas area
-        let (canvas_resp, _painter) =
-            ui.allocate_painter(self.project.canvas_size, Sense::click_and_drag());
+        let (canvas_resp,_painter)=ui.allocate_painter(self.project.canvas_size,Sense::click_and_drag());
         let canvas_rect = canvas_resp.rect;
 
         // compute panel rects & paint subtle backgrounds
         let pr = self.panel_rects(canvas_rect);
-        let p = ui.painter();
+        
+        // Draw grid first so it stays underneath panels & widgets
+        self.draw_grid(ui,canvas_rect);
+        
+        let p=ui.painter();
+        
         let bg = Color32::from_gray(28);
         for (rect, label) in [
             (pr.top, "Top Panel"),
@@ -391,9 +397,6 @@ impl RadBuilderApp {
                 self.spawning = None;
             }
         }
-
-        // Background grid
-        self.draw_grid(ui, canvas_rect);
 
         // draw widgets relative to their area rects
         self.project.widgets.sort_by_key(|w| w.z);
@@ -965,34 +968,31 @@ impl RadBuilderApp {
                     ui.add(egui::DragValue::new(&mut self.project.canvas_size.y));
                 });
                 ui.separator();
-                ui.collapsing("Panels", |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label("Top h");
-                        ui.add(
-                            egui::DragValue::new(&mut self.project.panel_top_h).range(0.0..=1000.0),
-                        );
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("Bottom h");
-                        ui.add(
-                            egui::DragValue::new(&mut self.project.panel_bottom_h)
-                                .range(0.0..=1000.0),
-                        );
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("Left w");
-                        ui.add(
-                            egui::DragValue::new(&mut self.project.panel_left_w)
-                                .range(0.0..=1000.0),
-                        );
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("Right w");
-                        ui.add(
-                            egui::DragValue::new(&mut self.project.panel_right_w)
-                                .range(0.0..=1000.0),
-                        );
-                    });
+                ui.strong("Panels");
+                ui.add_space(4.0);
+                ui.horizontal(|ui|{
+                    ui.checkbox(&mut self.project.panel_top_enabled, "Top");
+                    ui.add_enabled(self.project.panel_top_enabled,
+                        egui::DragValue::new(&mut self.project.panel_top_h).range(0.0..=1000.0).speed(1.0)
+                    ).on_hover_text("Top panel height");
+                });
+                ui.horizontal(|ui|{
+                    ui.checkbox(&mut self.project.panel_bottom_enabled, "Bottom");
+                    ui.add_enabled(self.project.panel_bottom_enabled,
+                        egui::DragValue::new(&mut self.project.panel_bottom_h).range(0.0..=1000.0).speed(1.0)
+                    ).on_hover_text("Bottom panel height");
+                });
+                ui.horizontal(|ui|{
+                    ui.checkbox(&mut self.project.panel_left_enabled, "Left");
+                    ui.add_enabled(self.project.panel_left_enabled,
+                        egui::DragValue::new(&mut self.project.panel_left_w).range(0.0..=1000.0).speed(1.0)
+                    ).on_hover_text("Left panel width");
+                });
+                ui.horizontal(|ui|{
+                    ui.checkbox(&mut self.project.panel_right_enabled, "Right");
+                    ui.add_enabled(self.project.panel_right_enabled,
+                        egui::DragValue::new(&mut self.project.panel_right_w).range(0.0..=1000.0).speed(1.0)
+                    ).on_hover_text("Right panel width");
                 });
             });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -1053,6 +1053,10 @@ impl RadBuilderApp {
         }
 
         out.push_str("struct GeneratedState {\n");
+        out.push_str(&format!(
+			"    enable_top: bool, enable_bottom: bool, enable_left: bool, enable_right: bool,\n"
+		));
+		out.push_str("    pr_top_h: f32, pr_bottom_h: f32, pr_left_w: f32, pr_right_w: f32,\n");
         for w in &self.project.widgets {
             match w.kind {
                 WidgetKind::TextEdit => out.push_str(&format!("    text_{}: String,\n", w.id)),
@@ -1077,6 +1081,21 @@ impl RadBuilderApp {
         out.push_str("impl Default for GeneratedState {\n");
         out.push_str("    fn default() -> Self {\n");
         out.push_str("        Self {\n");
+		out.push_str(&format!(
+				"            enable_top: {}, enable_bottom: {}, enable_left: {}, enable_right: {},\n",
+				if self.project.panel_top_enabled { "true" } else { "false" },
+				if self.project.panel_bottom_enabled { "true" } else { "false" },
+				if self.project.panel_left_enabled { "true" } else { "false" },
+				if self.project.panel_right_enabled { "true" } else { "false" },
+			));
+		out.push_str(&format!(
+			"            pr_top_h: {:.1}, pr_bottom_h: {:.1}, pr_left_w: {:.1}, pr_right_w: {:.1},\n",
+			self.project.panel_top_h,
+			self.project.panel_bottom_h,
+			self.project.panel_left_w,
+			self.project.panel_right_w
+		));
+
         for w in &self.project.widgets {
             match w.kind {
                 WidgetKind::TextEdit => {
@@ -1153,16 +1172,6 @@ impl RadBuilderApp {
         out.push_str("        }\n");
         out.push_str("    }\n");
         out.push_str("}\n\n");
-
-        // --- UI function ---
-        out.push_str("fn generated_ui(ui: &mut egui::Ui, state: &mut GeneratedState) {\n");
-        out.push_str(&format!(
-            "    let canvas = egui::Rect::from_min_size(ui.min_rect().min, egui::vec2({:.1}, {:.1}));\n",
-            self.project.canvas_size.x, self.project.canvas_size.y
-        ));
-        out.push_str(
-            "    let (_resp, _p) = ui.allocate_painter(canvas.size(), egui::Sense::hover());\n\n",
-        );
 
         // helper macro to emit a widget block at rect (origin + local pos)
         let emit_widget = |w: &Widget, out: &mut String, origin: &str| {
@@ -1327,7 +1336,7 @@ impl RadBuilderApp {
                         y = pos.y,
                         w = size.x,
                         h = size.y,
-                        id = w.id
+                        id = w.id,
                     ));
                 }
                 WidgetKind::AngleSelector => {
@@ -1428,78 +1437,113 @@ impl RadBuilderApp {
                         y = pos.y,
                         w = size.x,
                         h = size.y,
-                        nodes = nodes_literal
+                        nodes = nodes_literal,
                     ));
                 }
             }
         };
 
-        // group widgets per area and emit inside panels
-        let emit_area =
-            |label: &str, widgets: Vec<&Widget>, origin_expr: &str, out: &mut String| {
-                if widgets.is_empty() {
-                    return;
-                }
-                out.push_str(&format!("    // {}\n", label));
-                for w in widgets {
-                    emit_widget(w, out, origin_expr);
-                }
-                out.push_str("\n");
-            };
+		let mut top = Vec::new();
+		let mut bottom = Vec::new();
+		let mut left = Vec::new();
+		let mut right = Vec::new();
+		let mut center = Vec::new();
+		let mut free = Vec::new();
+		for w in &self.project.widgets {
+			match w.area {
+				Top => top.push(w),
+				Bottom => bottom.push(w),
+				Left => left.push(w),
+				Right => right.push(w),
+				Center => center.push(w),
+				Free => free.push(w),
+			}
+		}
 
-        // collect widgets by area
-        let mut top = Vec::new();
-        let mut bottom = Vec::new();
-        let mut left = Vec::new();
-        let mut right = Vec::new();
-        let mut center = Vec::new();
-        let mut free = Vec::new();
-        for w in &self.project.widgets {
-            match w.area {
-                Top => top.push(w),
-                Bottom => bottom.push(w),
-                Left => left.push(w),
-                Right => right.push(w),
-                Center => center.push(w),
-                Free => free.push(w),
-            }
-        }
+        out.push_str("fn generated_ui(ctx: &egui::Context, state: &mut GeneratedState) {\n");
 
-        // Panels: we expose panel rect origins so widget code can place by local pos
-        out.push_str(&format!(
-            "    let pr_top_h = {:.1}; let pr_bottom_h = {:.1}; let pr_left_w = {:.1}; let pr_right_w = {:.1};\n",
-            self.project.panel_top_h, self.project.panel_bottom_h, self.project.panel_left_w, self.project.panel_right_w
-        ));
-        out.push_str(
-            "    let pr_top = egui::Rect::from_min_max(canvas.min, egui::pos2(canvas.max.x, (canvas.min.y + pr_top_h).min(canvas.max.y)));\n\
-             let pr_bottom = egui::Rect::from_min_max(egui::pos2(canvas.min.x, (canvas.max.y - pr_bottom_h).max(canvas.min.y)), canvas.max);\n\
-             let pr_left = egui::Rect::from_min_max(egui::pos2(canvas.min.x, pr_top.max.y), egui::pos2((canvas.min.x + pr_left_w).min(canvas.max.x), pr_bottom.min.y));\n\
-             let pr_right = egui::Rect::from_min_max(egui::pos2((canvas.max.x - pr_right_w).max(canvas.min.x), pr_top.max.y), egui::pos2(canvas.max.x, pr_bottom.min.y));\n\
-             let pr_center = egui::Rect::from_min_max(pr_left.max, pr_right.min);\n\n"
-        );
+		// TOP
+		out.push_str("    if state.enable_top {\n");
+		out.push_str("        egui::TopBottomPanel::top(\"gen_top\")\n");
+		out.push_str("            .resizable(true)\n");
+		out.push_str("            .default_height(state.pr_top_h)\n");
+		out.push_str("            .show(ctx, |ui| {\n");
+		for w in top {
+			emit_widget(w, &mut out, "ui.min_rect().min");
+		}
+		out.push_str("            });\n");
+		out.push_str("    }\n");
 
-        emit_area("Top Panel", top, "pr_top.min", &mut out);
-        emit_area("Bottom Panel", bottom, "pr_bottom.min", &mut out);
-        emit_area("Left Panel", left, "pr_left.min", &mut out);
-        emit_area("Right Panel", right, "pr_right.min", &mut out);
-        emit_area("Center Panel", center, "pr_center.min", &mut out);
-        // Free widgets: just treat as canvas-local
-        emit_area("Free (canvas)", free, "canvas.min", &mut out);
+		// BOTTOM
+		out.push_str("    if state.enable_bottom {\n");
+		out.push_str("        egui::TopBottomPanel::bottom(\"gen_bottom\")\n");
+		out.push_str("            .resizable(true)\n");
+		out.push_str("            .default_height(state.pr_bottom_h)\n");
+		out.push_str("            .show(ctx, |ui| {\n");
+		for w in bottom {
+			emit_widget(w, &mut out, "ui.min_rect().min");
+		}
+		out.push_str("            });\n");
+		out.push_str("    }\n");
 
-        out.push_str("}\n\n");
-        out.push_str("// Example eframe app to host the generated UI\n");
-        out.push_str("pub struct GeneratedApp { state: GeneratedState }\n\
-                      impl Default for GeneratedApp { fn default() -> Self { Self { state: Default::default() } } }\n\
-                      impl eframe::App for GeneratedApp {\n\
-                      \tfn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {\n\
-                      \t\tegui::CentralPanel::default().show(ctx, |ui| { generated_ui(ui, &mut self.state); });\n\
-                      \t}\n\
-                      }\n\n\
-                      fn main() -> eframe::Result<()> {\n\
-                      \tlet native_options = eframe::NativeOptions::default();\n\
-                      \teframe::run_native(\"Generated UI\", native_options, Box::new(|_cc| Ok(Box::new(GeneratedApp::default()))))\n\
-                      }\n");
-        out
+		// LEFT
+		out.push_str("    if state.enable_left {\n");
+		out.push_str("        egui::SidePanel::left(\"gen_left\")\n");
+		out.push_str("            .resizable(true)\n");
+		out.push_str("            .default_width(state.pr_left_w)\n");
+		out.push_str("            .show(ctx, |ui| {\n");
+		for w in left {
+			emit_widget(w, &mut out, "ui.min_rect().min");
+		}
+		out.push_str("            });\n");
+		out.push_str("    }\n");
+
+		// RIGHT
+		out.push_str("    if state.enable_right {\n");
+		out.push_str("        egui::SidePanel::right(\"gen_right\")\n");
+		out.push_str("            .resizable(true)\n");
+		out.push_str("            .default_width(state.pr_right_w)\n");
+		out.push_str("            .show(ctx, |ui| {\n");
+		for w in right {
+			emit_widget(w, &mut out, "ui.min_rect().min");
+		}
+		out.push_str("            });\n");
+		out.push_str("    }\n");
+
+		// CENTER (+ FREE): use CentralPanel; widgets are placed absolutely within it.
+		out.push_str("    egui::CentralPanel::default().show(ctx, |ui| {\n");
+		// fixed logical canvas (keeps your designed size)
+		out.push_str(&format!(
+			"        let canvas = egui::Rect::from_min_size(ui.min_rect().min, egui::vec2({:.1}, {:.1}));\n",
+			self.project.canvas_size.x, self.project.canvas_size.y
+		));
+		out.push_str("        let _ = ui.allocate_painter(canvas.size(), egui::Sense::hover());\n");
+		for w in center {
+			emit_widget(w, &mut out, "canvas.min");
+		}
+		for w in free {
+			emit_widget(w, &mut out, "canvas.min");
+		}
+		out.push_str("    });\n");
+
+		out.push_str("}\n\n");
+
+		// ---------- Example eframe app (updated to call generated_ui with ctx) ----------
+		out.push_str(
+			"pub struct GeneratedApp { state: GeneratedState }\n\
+			 impl Default for GeneratedApp { fn default() -> Self { Self { state: Default::default() } } }\n\
+			 impl eframe::App for GeneratedApp {\n\
+			 \tfn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {\n\
+			 \t\tgenerated_ui(ctx, &mut self.state);\n\
+			 \t}\n\
+			 }\n\n\
+			 fn main() -> eframe::Result<()> {\n\
+			 \tlet native_options = eframe::NativeOptions::default();\n\
+			 \teframe::run_native(\"Generated UI\", native_options, Box::new(|_cc| Ok(Box::new(GeneratedApp::default()))))\n\
+			 }\n",
+		);
+
+		out
     }
 }
 
