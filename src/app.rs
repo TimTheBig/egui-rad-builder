@@ -99,7 +99,15 @@ impl RadBuilderApp {
         self.next_id += 1;
 
         let (size, props) = match kind {
-			WidgetKind::MenuButton=>{let mut p=WidgetProps{text:"Menu".into(),..Default::default()};p.items=vec!["First".into(),"Second".into(),"Third".into()];p.selected=0;(vec2(180.0,28.0),p)}
+            WidgetKind::MenuButton => {
+                let mut p = WidgetProps {
+                    text: "Menu".into(),
+                    ..Default::default()
+                };
+                p.items = vec!["First".into(), "Second".into(), "Third".into()];
+                p.selected = 0;
+                (vec2(180.0, 28.0), p)
+            }
             WidgetKind::Label => (
                 vec2(140.0, 24.0),
                 WidgetProps {
@@ -306,66 +314,74 @@ impl RadBuilderApp {
                 Free => free_idx.push(i),
             }
         }
-        
-		// Top
-		if self.project.panel_top_enabled {
-			egui::TopBottomPanel::top("rb_top")
-				.resizable(true)
-				.show(ctx, |ui| {
-					let panel_rect = ui.clip_rect();
-					self.live_top = Some(panel_rect);
-					if self.show_grid { self.draw_grid(ui, panel_rect); }
-					for &i in &top_idx {
-						let w = &mut self.project.widgets[i];
-						Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
-					}
-				});
-		}
 
-		// Bottom
-		if self.project.panel_bottom_enabled {
-			egui::TopBottomPanel::bottom("rb_bottom")
-				.resizable(true)
-				.show(ctx, |ui| {
-					let panel_rect = ui.clip_rect();
-					self.live_bottom = Some(panel_rect);
-					if self.show_grid { self.draw_grid(ui, panel_rect); }
-					for &i in &bottom_idx {
-						let w = &mut self.project.widgets[i];
-						Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
-					}
-				});
-		}
+        // Top
+        if self.project.panel_top_enabled {
+            egui::TopBottomPanel::top("rb_top")
+                .resizable(true)
+                .show(ctx, |ui| {
+                    let panel_rect = ui.clip_rect();
+                    self.live_top = Some(panel_rect);
+                    if self.show_grid {
+                        self.draw_grid(ui, panel_rect);
+                    }
+                    for &i in &top_idx {
+                        let w = &mut self.project.widgets[i];
+                        Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
+                    }
+                });
+        }
 
-		// Left
-		if self.project.panel_left_enabled {
-			egui::SidePanel::left("rb_left")
-				.resizable(true)
-				.show(ctx, |ui| {
-					let panel_rect = ui.clip_rect();
-					self.live_left = Some(panel_rect);
-					if self.show_grid { self.draw_grid(ui, panel_rect); }
-					for &i in &left_idx {
-						let w = &mut self.project.widgets[i];
-						Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
-					}
-				});
-		}
+        // Bottom
+        if self.project.panel_bottom_enabled {
+            egui::TopBottomPanel::bottom("rb_bottom")
+                .resizable(true)
+                .show(ctx, |ui| {
+                    let panel_rect = ui.clip_rect();
+                    self.live_bottom = Some(panel_rect);
+                    if self.show_grid {
+                        self.draw_grid(ui, panel_rect);
+                    }
+                    for &i in &bottom_idx {
+                        let w = &mut self.project.widgets[i];
+                        Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
+                    }
+                });
+        }
 
-		// Right
-		if self.project.panel_right_enabled {
-			egui::SidePanel::right("rb_right")
-				.resizable(true)
-				.show(ctx, |ui| {
-					let panel_rect = ui.clip_rect();
-					self.live_right = Some(panel_rect);
-					if self.show_grid { self.draw_grid(ui, panel_rect); }
-					for &i in &right_idx {
-						let w = &mut self.project.widgets[i];
-						Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
-					}
-				});
-		}
+        // Left
+        if self.project.panel_left_enabled {
+            egui::SidePanel::left("rb_left")
+                .resizable(true)
+                .show(ctx, |ui| {
+                    let panel_rect = ui.clip_rect();
+                    self.live_left = Some(panel_rect);
+                    if self.show_grid {
+                        self.draw_grid(ui, panel_rect);
+                    }
+                    for &i in &left_idx {
+                        let w = &mut self.project.widgets[i];
+                        Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
+                    }
+                });
+        }
+
+        // Right
+        if self.project.panel_right_enabled {
+            egui::SidePanel::right("rb_right")
+                .resizable(true)
+                .show(ctx, |ui| {
+                    let panel_rect = ui.clip_rect();
+                    self.live_right = Some(panel_rect);
+                    if self.show_grid {
+                        self.draw_grid(ui, panel_rect);
+                    }
+                    for &i in &right_idx {
+                        let w = &mut self.project.widgets[i];
+                        Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
+                    }
+                });
+        }
 
         // Center (design canvas)
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -375,8 +391,10 @@ impl RadBuilderApp {
 
             let (resp, _) = ui.allocate_painter(canvas.size(), egui::Sense::hover());
             let painter_rect = egui::Rect::from_min_size(canvas.min, canvas.size());
-            
-            if self.show_grid { self.draw_grid(ui, painter_rect); }
+
+            if self.show_grid {
+                self.draw_grid(ui, painter_rect);
+            }
 
             // Draw Center + Free widgets inside the center canvas
             for &i in &center_idx {
@@ -392,7 +410,7 @@ impl RadBuilderApp {
             if let Some(kind) = self.spawning.clone() {
                 if let Some(mouse) = ui.ctx().pointer_interact_pos() {
                     let ghost_size = match kind {
-						WidgetKind::MenuButton=>vec2(180.0,28.0),
+                        WidgetKind::MenuButton => vec2(180.0, 28.0),
                         WidgetKind::Label => vec2(140.0, 24.0),
                         WidgetKind::Button => vec2(160.0, 32.0),
                         WidgetKind::ImageTextButton => vec2(200.0, 36.0),
@@ -489,19 +507,23 @@ impl RadBuilderApp {
         let rect = Rect::from_min_size(canvas_rect.min + w.pos.to_vec2(), w.size);
         ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
             match w.kind {
-				WidgetKind::MenuButton=>{
-					let items = if w.props.items.is_empty(){ vec!["Item".into()] } else { w.props.items.clone() };
-					let mut sel = w.props.selected.min(items.len()-1);
-					ui.menu_button(&w.props.text, |ui| {
-						for (i, it) in items.iter().enumerate() {
-							if ui.button(it).clicked() {
-								sel = i;
-								ui.close_kind(egui::UiKind::Menu);
-							}
-						}
-					});
-					w.props.selected = sel;
-				}
+                WidgetKind::MenuButton => {
+                    let items = if w.props.items.is_empty() {
+                        vec!["Item".into()]
+                    } else {
+                        w.props.items.clone()
+                    };
+                    let mut sel = w.props.selected.min(items.len() - 1);
+                    ui.menu_button(&w.props.text, |ui| {
+                        for (i, it) in items.iter().enumerate() {
+                            if ui.button(it).clicked() {
+                                sel = i;
+                                ui.close_kind(egui::UiKind::Menu);
+                            }
+                        }
+                    });
+                    w.props.selected = sel;
+                }
                 WidgetKind::Label => {
                     ui.vertical_centered(|ui| {
                         ui.label(&w.props.text);
@@ -793,7 +815,7 @@ impl RadBuilderApp {
         ui.label("Drag any control onto the canvas");
         ui.add_space(8.0);
 
-		self.palette_item(ui, "Menu Button",WidgetKind::MenuButton);
+        self.palette_item(ui, "Menu Button", WidgetKind::MenuButton);
         self.palette_item(ui, "Label", WidgetKind::Label);
         self.palette_item(ui, "Button", WidgetKind::Button);
         self.palette_item(ui, "Image + Text Button", WidgetKind::ImageTextButton);
@@ -856,7 +878,7 @@ impl RadBuilderApp {
                 | WidgetKind::ComboBox
                 | WidgetKind::Tree
                 | WidgetKind::Separator => {}
-                | WidgetKind::MenuButton=>{}
+                WidgetKind::MenuButton => {}
             }
             match w.kind {
                 WidgetKind::ImageTextButton => {
@@ -881,7 +903,10 @@ impl RadBuilderApp {
                     ui.label("URL");
                     ui.text_edit_singleline(&mut w.props.url);
                 }
-                WidgetKind::RadioGroup | WidgetKind::ComboBox | WidgetKind::Tree | WidgetKind::MenuButton => {
+                WidgetKind::RadioGroup
+                | WidgetKind::ComboBox
+                | WidgetKind::Tree
+                | WidgetKind::MenuButton => {
                     ui.label(match w.kind {
                         WidgetKind::Tree => "Nodes (indent with spaces; 2 spaces per level)",
                         _ => "Items (one per line)",
@@ -1019,7 +1044,7 @@ impl RadBuilderApp {
                 ui.checkbox(&mut self.palette_open, "Show Palette");
             });
             ui.menu_button("Settings", |ui| {
-				ui.checkbox(&mut self.show_grid, "Show grid");
+                ui.checkbox(&mut self.show_grid, "Show grid");
                 ui.horizontal(|ui| {
                     ui.label("Grid");
                     ui.add(egui::DragValue::new(&mut self.grid_size).range(1.0..=64.0));
@@ -1235,7 +1260,7 @@ impl RadBuilderApp {
 						w.props.items.iter().map(|s| format!("\"{}\".to_string()", escape(s))).collect::<Vec<_>>().join(", ")
 					};
 					out.push_str(&format!(
-						"    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1})), |ui| {{\n",
+						"    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1}))), |ui| {{\n",
 						x=w.pos.x, y=w.pos.y, w=w.size.x, h=w.size.y
 					));
 					out.push_str(&format!("        let items = vec![{items}];\n", items=items_code));
@@ -1250,20 +1275,20 @@ impl RadBuilderApp {
 					out.push_str("    });\n");
 				}
                 WidgetKind::Label => out.push_str(&format!(
-                    "    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ ui.label(\"{}\"); }});\n",
+                    "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1}))), |ui| {{ ui.label(\"{}\"); }});\n",
                     pos.x,pos.y,size.x,size.y,escape(&w.props.text)
                 )),
                 WidgetKind::Button => {
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ ui.add_sized(egui::vec2({:.1},{:.1}), egui::Button::new(\"{}\")); }});\n",
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1}))), |ui| {{ ui.add_sized(egui::vec2({:.1},{:.1}), egui::Button::new(\"{}\")); }});\n",
                         pos.x, pos.y, size.x, size.y, size.x, size.y, escape(&w.props.text)
                     ));
                 }
                 WidgetKind::ImageTextButton => {
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size(\
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size(\
 							{origin} + egui::vec2({x:.1},{y:.1}), \
-							egui::vec2({w:.1},{h:.1})), |ui| {{ \
+							egui::vec2({w:.1},{h:.1}))), |ui| {{ \
 							ui.add_sized(egui::vec2({w:.1},{h:.1}), \
 								egui::Button::new(format!(\"{{}}  {{}}\", \"{icon}\", \"{text}\")) \
 							); \
@@ -1278,25 +1303,25 @@ impl RadBuilderApp {
                 }
                 WidgetKind::Checkbox => {
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ ui.checkbox(&mut state.checked_{}, \"{}\"); }});\n",
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1}))), |ui| {{ ui.checkbox(&mut state.checked_{}, \"{}\"); }});\n",
                         pos.x, pos.y, size.x, size.y, w.id, escape(&w.props.text)
                     ));
                 }
                 WidgetKind::TextEdit => {
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ ui.add_sized(egui::vec2({:.1},{:.1}), egui::TextEdit::singleline(&mut state.text_{}).hint_text(\"{}\")); }});\n",
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1}))), |ui| {{ ui.add_sized(egui::vec2({:.1},{:.1}), egui::TextEdit::singleline(&mut state.text_{}).hint_text(\"{}\")); }});\n",
                         pos.x, pos.y, size.x, size.y, size.x, size.y, w.id, escape(&w.props.text)
                     ));
                 }
                 WidgetKind::Slider => {
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ ui.add_sized(egui::vec2({:.1},{:.1}), egui::Slider::new(&mut state.value_{}, {:.3}..={:.3}).text(\"{}\")); }});\n",
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1}))), |ui| {{ ui.add_sized(egui::vec2({:.1},{:.1}), egui::Slider::new(&mut state.value_{}, {:.3}..={:.3}).text(\"{}\")); }});\n",
                         pos.x, pos.y, size.x, size.y, size.x, size.y, w.id, w.props.min, w.props.max, escape(&w.props.text)
                     ));
                 }
                 WidgetKind::ProgressBar => {
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ ui.add_sized(egui::vec2({:.1},{:.1}), egui::ProgressBar::new(state.progress_{}).show_percentage()); }});\n",
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1}))), |ui| {{ ui.add_sized(egui::vec2({:.1},{:.1}), egui::ProgressBar::new(state.progress_{}).show_percentage()); }});\n",
                         pos.x, pos.y, size.x, size.y, size.x, size.y, w.id
                     ));
                 }
@@ -1312,7 +1337,7 @@ impl RadBuilderApp {
                             .join(", ")
                     };
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{\n",
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1}))), |ui| {{\n",
                         pos.x, pos.y, size.x, size.y
                     ));
                     out.push_str(&format!("        let items = vec![{}];\n", items_code));
@@ -1324,19 +1349,19 @@ impl RadBuilderApp {
                 }
                 WidgetKind::Link => {
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ ui.link(\"{}\"); }});\n",
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1}))), |ui| {{ ui.link(\"{}\"); }});\n",
                         pos.x, pos.y, size.x, size.y, escape(&w.props.text)
                     ));
                 }
                 WidgetKind::Hyperlink => {
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ ui.hyperlink_to(\"{}\", \"{}\"); }});\n",
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1}))), |ui| {{ ui.hyperlink_to(\"{}\", \"{}\"); }});\n",
                         pos.x, pos.y, size.x, size.y, escape(&w.props.text), escape(&w.props.url)
                     ));
                 }
                 WidgetKind::SelectableLabel => {
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ if ui.add(egui::SelectableLabel::new(state.sel_{}, \"{}\")).clicked() {{ state.sel_{} = !state.sel_{}; }} }});\n",
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1}))), |ui| {{ if ui.add(egui::Button::selectable(state.sel_{}, \"{}\")).clicked() {{ state.sel_{} = !state.sel_{}; }} }});\n",
                         pos.x, pos.y, size.x, size.y, w.id, escape(&w.props.text), w.id, w.id
                     ));
                 }
@@ -1353,7 +1378,7 @@ impl RadBuilderApp {
                     };
 
                     out.push_str(&format!(
-						"    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1})), |ui| {{\n",
+						"    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1}))), |ui| {{\n",
 						x = pos.x, y = pos.y, w = size.x, h = size.y
 					));
                     out.push_str(&format!(
@@ -1379,26 +1404,26 @@ impl RadBuilderApp {
                 }
                 WidgetKind::Separator => {
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ ui.separator(); }});\n",
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1}))), |ui| {{ ui.separator(); }});\n",
                         pos.x, pos.y, size.x, size.y
                     ));
                 }
                 WidgetKind::CollapsingHeader => {
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ egui::CollapsingHeader::new(\"{}\").default_open(state.open_{}).show(ui, |ui| {{ ui.label(\"… place your inner content here …\"); }}); }});\n",
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1}))), |ui| {{ egui::CollapsingHeader::new(\"{}\").default_open(state.open_{}).show(ui, |ui| {{ ui.label(\"… place your inner content here …\"); }}); }});\n",
                         pos.x, pos.y, size.x, size.y, escape(&w.props.text), w.id
                     ));
                 }
                 WidgetKind::DatePicker => {
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ ui.horizontal(|ui| {{ ui.label(\"{}\"); ui.add(DatePickerButton::new(&mut state.date_{})); }}); }});\n",
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1}))), |ui| {{ ui.horizontal(|ui| {{ ui.label(\"{}\"); ui.add(DatePickerButton::new(&mut state.date_{})); }}); }});\n",
                         pos.x, pos.y, size.x, size.y, escape(&w.props.text), w.id
                     ));
                 }
                 WidgetKind::Password => {
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size(\
-							{origin} + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1})), |ui| {{ \
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size(\
+							{origin} + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1}))), |ui| {{ \
 							ui.add_sized(egui::vec2({w:.1},{h:.1}), \
 								egui::TextEdit::singleline(&mut state.pass_{id}).password(true).hint_text(\"password\") \
 							); \
@@ -1412,8 +1437,8 @@ impl RadBuilderApp {
                 }
                 WidgetKind::AngleSelector => {
                     out.push_str(&format!(
-						"    ui.allocate_ui_at_rect(egui::Rect::from_min_size(\
-							{origin} + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1})), |ui| {{ \
+						"    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size(\
+							{origin} + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1}))), |ui| {{ \
 							ui.add_sized(egui::vec2({w:.1},{h:.1}), \
 								egui::Slider::new(&mut state.angle_{id}, {min:.3}..={max:.3}).suffix(\"°\").text(\"{label}\") \
 							); \
@@ -1497,8 +1522,8 @@ impl RadBuilderApp {
                     };
 
                     out.push_str(&format!(
-                        "    ui.allocate_ui_at_rect(egui::Rect::from_min_size(\
-							{origin} + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1})), |ui| {{ \
+                        "    ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size(\
+							{origin} + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1}))), |ui| {{ \
 							let nodes: Vec<GenTreeNode> = {nodes}; \
 							egui::ScrollArea::vertical().auto_shrink([false,false]).show(ui, |ui| {{ \
 								gen_show_tree(ui, &nodes); \
