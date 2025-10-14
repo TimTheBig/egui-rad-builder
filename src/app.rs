@@ -774,7 +774,6 @@ impl RadBuilderApp {
             if drag_delta != egui::Vec2::ZERO {
                 w.pos += drag_delta;
                 w.pos = snap_pos_with_grid(w.pos, grid);
-                // NEW: clamp to area bounds
                 let maxx = (canvas_rect.width() - w.size.x).max(0.0);
                 let maxy = (canvas_rect.height() - w.size.y).max(0.0);
                 w.pos.x = w.pos.x.clamp(0.0, maxx);
@@ -878,7 +877,10 @@ impl RadBuilderApp {
                 | WidgetKind::ComboBox
                 | WidgetKind::Tree
                 | WidgetKind::Separator => {}
-                WidgetKind::MenuButton => {}
+                | WidgetKind::MenuButton => {
+					ui.label("Text");
+					ui.text_edit_singleline(&mut w.props.text);
+				}
             }
             match w.kind {
                 WidgetKind::ImageTextButton => {
