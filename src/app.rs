@@ -303,64 +303,62 @@ impl RadBuilderApp {
                 Free => free_idx.push(i),
             }
         }
+        
+		// Top
+		if self.project.panel_top_enabled {
+			egui::TopBottomPanel::top("rb_top")
+				.resizable(true)
+				.show(ctx, |ui| {
+					let panel_rect = ui.clip_rect();
+					self.live_top = Some(panel_rect);
+					for &i in &top_idx {
+						let w = &mut self.project.widgets[i];
+						Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
+					}
+				});
+		}
 
-        // -------- 2) Real egui panels; draw by indexing back into the Vec --------
+		// Bottom
+		if self.project.panel_bottom_enabled {
+			egui::TopBottomPanel::bottom("rb_bottom")
+				.resizable(true)
+				.show(ctx, |ui| {
+					let panel_rect = ui.clip_rect();
+					self.live_bottom = Some(panel_rect);
+					for &i in &bottom_idx {
+						let w = &mut self.project.widgets[i];
+						Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
+					}
+				});
+		}
 
-        // Top
-        if self.project.panel_top_enabled {
-            egui::TopBottomPanel::top("rb_top")
-                .resizable(true)
-                .show(ctx, |ui| {
-                    let canvas_rect = ui.min_rect();
-                    self.live_top = Some(canvas_rect);
-                    for &i in &top_idx {
-                        let w = &mut self.project.widgets[i];
-                        Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
-                    }
-                });
-        }
+		// Left
+		if self.project.panel_left_enabled {
+			egui::SidePanel::left("rb_left")
+				.resizable(true)
+				.show(ctx, |ui| {
+					let panel_rect = ui.clip_rect();
+					self.live_left = Some(panel_rect);
+					for &i in &left_idx {
+						let w = &mut self.project.widgets[i];
+						Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
+					}
+				});
+		}
 
-        // Bottom
-        if self.project.panel_bottom_enabled {
-            egui::TopBottomPanel::bottom("rb_bottom")
-                .resizable(true)
-                .show(ctx, |ui| {
-                    let canvas_rect = ui.min_rect();
-                    self.live_bottom = Some(canvas_rect);
-                    for &i in &bottom_idx {
-                        let w = &mut self.project.widgets[i];
-                        Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
-                    }
-                });
-        }
-
-        // Left
-        if self.project.panel_left_enabled {
-            egui::SidePanel::left("rb_left")
-                .resizable(true)
-                .show(ctx, |ui| {
-                    let canvas_rect = ui.min_rect();
-                    self.live_left = Some(canvas_rect);
-                    for &i in &left_idx {
-                        let w = &mut self.project.widgets[i];
-                        Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
-                    }
-                });
-        }
-
-        // Right
-        if self.project.panel_right_enabled {
-            egui::SidePanel::right("rb_right")
-                .resizable(true)
-                .show(ctx, |ui| {
-                    let canvas_rect = ui.min_rect();
-                    self.live_right = Some(canvas_rect);
-                    for &i in &right_idx {
-                        let w = &mut self.project.widgets[i];
-                        Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
-                    }
-                });
-        }
+		// Right
+		if self.project.panel_right_enabled {
+			egui::SidePanel::right("rb_right")
+				.resizable(true)
+				.show(ctx, |ui| {
+					let panel_rect = ui.clip_rect();
+					self.live_right = Some(panel_rect);
+					for &i in &right_idx {
+						let w = &mut self.project.widgets[i];
+						Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
+					}
+				});
+		}
 
         // Center (design canvas)
         egui::CentralPanel::default().show(ctx, |ui| {
