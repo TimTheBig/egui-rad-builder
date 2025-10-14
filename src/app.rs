@@ -291,28 +291,29 @@ impl RadBuilderApp {
         let p=ui.painter();
         
         let bg = Color32::from_gray(28);
-        for (rect, label) in [
-            (pr.top, "Top Panel"),
-            (pr.bottom, "Bottom Panel"),
-            (pr.left, "Left Panel"),
-            (pr.right, "Right Panel"),
-            (pr.center, "Center Panel"),
-        ] {
-            p.rect_filled(rect, 4.0, bg);
-            p.rect_stroke(
-                rect,
-                CornerRadius::same(4),
-                Stroke::new(1.0, Color32::from_gray(70)),
-                egui::StrokeKind::Outside,
-            );
-            p.text(
-                rect.left_top() + vec2(6.0, 4.0),
-                egui::Align2::LEFT_TOP,
-                label,
-                egui::FontId::monospace(11.0),
-                Color32::from_gray(180),
-            );
-        }
+        let draw_panel = |rect: Rect, label: &str| {
+			if !rect.is_positive() { return; } // skip 0-size rects
+			p.rect_filled(rect, 4.0, bg);
+			p.rect_stroke(
+				rect,
+				CornerRadius::same(4),
+				Stroke::new(1.0, Color32::from_gray(70)),
+				egui::StrokeKind::Outside,
+			);
+			p.text(
+				rect.left_top() + vec2(6.0, 4.0),
+				egui::Align2::LEFT_TOP,
+				label,
+				egui::FontId::monospace(11.0),
+				Color32::from_gray(180),
+			);
+		};
+		
+		if self.project.panel_top_enabled    { draw_panel(pr.top,    "Top Panel"); }
+		if self.project.panel_bottom_enabled { draw_panel(pr.bottom, "Bottom Panel"); }
+		if self.project.panel_left_enabled   { draw_panel(pr.left,   "Left Panel"); }
+		if self.project.panel_right_enabled  { draw_panel(pr.right,  "Right Panel"); }
+		draw_panel(pr.center, "Center Panel");
 
         // Spawn from palette drag-preview
         if let Some(kind) = self.spawning.clone() {
