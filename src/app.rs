@@ -35,7 +35,7 @@ impl Default for RadBuilderApp {
             next_id: 1,
             spawning: None,
             generated: String::new(),
-            grid_size: 8.0,
+            grid_size: 1.0,
             live_top: None,
             live_bottom: None,
             live_left: None,
@@ -371,8 +371,6 @@ impl RadBuilderApp {
             let (resp, _) = ui.allocate_painter(canvas.size(), egui::Sense::hover());
             let painter_rect = egui::Rect::from_min_size(canvas.min, canvas.size());
 
-            self.draw_grid(ui, painter_rect);
-
             // Draw Center + Free widgets inside the center canvas
             for &i in &center_idx {
                 let w = &mut self.project.widgets[i];
@@ -454,7 +452,7 @@ impl RadBuilderApp {
 
     fn draw_grid(&self, ui: &mut egui::Ui, rect: Rect) {
         let painter = ui.painter_at(rect);
-        let g = self.grid_size.max(4.0);
+        let g = self.grid_size;
         let cols = (rect.width() / g) as i32;
         let rows = (rect.height() / g) as i32;
         for c in 0..=cols {
@@ -1000,7 +998,7 @@ impl RadBuilderApp {
             ui.menu_button("Settings", |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Grid");
-                    ui.add(egui::DragValue::new(&mut self.grid_size).range(2.0..=64.0));
+                    ui.add(egui::DragValue::new(&mut self.grid_size).range(1.0..=64.0));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Canvas size");
