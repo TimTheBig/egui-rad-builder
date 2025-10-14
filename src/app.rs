@@ -19,7 +19,7 @@ pub(crate) struct RadBuilderApp {
     generated: String,
     // Settings
     grid_size: f32,
-	live_top: Option<Rect>,
+    live_top: Option<Rect>,
     live_bottom: Option<Rect>,
     live_left: Option<Rect>,
     live_right: Option<Rect>,
@@ -47,22 +47,42 @@ impl Default for RadBuilderApp {
 
 impl RadBuilderApp {
     fn area_at(&self, pos: Pos2) -> DockArea {
-        if let Some(r) = self.live_top     { if r.contains(pos) { return DockArea::Top; } }
-        if let Some(r) = self.live_bottom  { if r.contains(pos) { return DockArea::Bottom; } }
-        if let Some(r) = self.live_left    { if r.contains(pos) { return DockArea::Left; } }
-        if let Some(r) = self.live_right   { if r.contains(pos) { return DockArea::Right; } }
-        if let Some(r) = self.live_center  { if r.contains(pos) { return DockArea::Center; } }
+        if let Some(r) = self.live_top {
+            if r.contains(pos) {
+                return DockArea::Top;
+            }
+        }
+        if let Some(r) = self.live_bottom {
+            if r.contains(pos) {
+                return DockArea::Bottom;
+            }
+        }
+        if let Some(r) = self.live_left {
+            if r.contains(pos) {
+                return DockArea::Left;
+            }
+        }
+        if let Some(r) = self.live_right {
+            if r.contains(pos) {
+                return DockArea::Right;
+            }
+        }
+        if let Some(r) = self.live_center {
+            if r.contains(pos) {
+                return DockArea::Center;
+            }
+        }
         DockArea::Free
     }
 
     fn origin_for_area(&self, area: DockArea) -> Option<Pos2> {
         match area {
-            DockArea::Top    => self.live_top.map(|r| r.min),
+            DockArea::Top => self.live_top.map(|r| r.min),
             DockArea::Bottom => self.live_bottom.map(|r| r.min),
-            DockArea::Left   => self.live_left.map(|r| r.min),
-            DockArea::Right  => self.live_right.map(|r| r.min),
+            DockArea::Left => self.live_left.map(|r| r.min),
+            DockArea::Right => self.live_right.map(|r| r.min),
             DockArea::Center => self.live_center.map(|r| r.min),
-            DockArea::Free   => self.live_center.map(|r| r.min), // place Free inside center canvas
+            DockArea::Free => self.live_center.map(|r| r.min), // place Free inside center canvas
         }
     }
 
@@ -251,190 +271,186 @@ impl RadBuilderApp {
         let id = self.selected?;
         self.project.widgets.iter_mut().find(|w| w.id == id)
     }
-    
-	fn preview_panels_ui(&mut self, ctx: &egui::Context) {
-		use DockArea::*;
 
-		// Optional: stable visual order
-		self.project.widgets.sort_by_key(|w| w.z);
+    fn preview_panels_ui(&mut self, ctx: &egui::Context) {
+        use DockArea::*;
 
-		// Reset live rects each frame
-		self.live_top = None;
-		self.live_bottom = None;
-		self.live_left = None;
-		self.live_right = None;
-		self.live_center = None;
+        // Optional: stable visual order
+        self.project.widgets.sort_by_key(|w| w.z);
 
-		// -------- 1) Bucket INDICES (not &mut) by area in a read-only pass --------
-		let mut top_idx    = Vec::new();
-		let mut bottom_idx = Vec::new();
-		let mut left_idx   = Vec::new();
-		let mut right_idx  = Vec::new();
-		let mut center_idx = Vec::new();
-		let mut free_idx   = Vec::new();
+        // Reset live rects each frame
+        self.live_top = None;
+        self.live_bottom = None;
+        self.live_left = None;
+        self.live_right = None;
+        self.live_center = None;
 
-		for (i, w) in self.project.widgets.iter().enumerate() {
-			match w.area {
-				Top    => top_idx.push(i),
-				Bottom => bottom_idx.push(i),
-				Left   => left_idx.push(i),
-				Right  => right_idx.push(i),
-				Center => center_idx.push(i),
-				Free   => free_idx.push(i),
-			}
-		}
+        // -------- 1) Bucket INDICES (not &mut) by area in a read-only pass --------
+        let mut top_idx = Vec::new();
+        let mut bottom_idx = Vec::new();
+        let mut left_idx = Vec::new();
+        let mut right_idx = Vec::new();
+        let mut center_idx = Vec::new();
+        let mut free_idx = Vec::new();
 
-		// -------- 2) Real egui panels; draw by indexing back into the Vec --------
+        for (i, w) in self.project.widgets.iter().enumerate() {
+            match w.area {
+                Top => top_idx.push(i),
+                Bottom => bottom_idx.push(i),
+                Left => left_idx.push(i),
+                Right => right_idx.push(i),
+                Center => center_idx.push(i),
+                Free => free_idx.push(i),
+            }
+        }
 
-		// Top
-		if self.project.panel_top_enabled {
-			egui::TopBottomPanel::top("rb_top")
-				.resizable(true)
-				.default_height(self.project.panel_top_h)
-				.show(ctx, |ui| {
-					let canvas_rect = ui.min_rect();
-					self.live_top = Some(canvas_rect);
-					for &i in &top_idx {
-						let w = &mut self.project.widgets[i];
-						Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
-					}
-				});
-		}
+        // -------- 2) Real egui panels; draw by indexing back into the Vec --------
 
-		// Bottom
-		if self.project.panel_bottom_enabled {
-			egui::TopBottomPanel::bottom("rb_bottom")
-				.resizable(true)
-				.default_height(self.project.panel_bottom_h)
-				.show(ctx, |ui| {
-					let canvas_rect = ui.min_rect();
-					self.live_bottom = Some(canvas_rect);
-					for &i in &bottom_idx {
-						let w = &mut self.project.widgets[i];
-						Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
-					}
-				});
-		}
+        // Top
+        if self.project.panel_top_enabled {
+            egui::TopBottomPanel::top("rb_top")
+                .resizable(true)
+                .show(ctx, |ui| {
+                    let canvas_rect = ui.min_rect();
+                    self.live_top = Some(canvas_rect);
+                    for &i in &top_idx {
+                        let w = &mut self.project.widgets[i];
+                        Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
+                    }
+                });
+        }
 
-		// Left
-		if self.project.panel_left_enabled {
-			egui::SidePanel::left("rb_left")
-				.resizable(true)
-				.default_width(self.project.panel_left_w)
-				.show(ctx, |ui| {
-					let canvas_rect = ui.min_rect();
-					self.live_left = Some(canvas_rect);
-					for &i in &left_idx {
-						let w = &mut self.project.widgets[i];
-						Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
-					}
-				});
-		}
+        // Bottom
+        if self.project.panel_bottom_enabled {
+            egui::TopBottomPanel::bottom("rb_bottom")
+                .resizable(true)
+                .show(ctx, |ui| {
+                    let canvas_rect = ui.min_rect();
+                    self.live_bottom = Some(canvas_rect);
+                    for &i in &bottom_idx {
+                        let w = &mut self.project.widgets[i];
+                        Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
+                    }
+                });
+        }
 
-		// Right
-		if self.project.panel_right_enabled {
-			egui::SidePanel::right("rb_right")
-				.resizable(true)
-				.default_width(self.project.panel_right_w)
-				.show(ctx, |ui| {
-					let canvas_rect = ui.min_rect();
-					self.live_right = Some(canvas_rect);
-					for &i in &right_idx {
-						let w = &mut self.project.widgets[i];
-						Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
-					}
-				});
-		}
+        // Left
+        if self.project.panel_left_enabled {
+            egui::SidePanel::left("rb_left")
+                .resizable(true)
+                .show(ctx, |ui| {
+                    let canvas_rect = ui.min_rect();
+                    self.live_left = Some(canvas_rect);
+                    for &i in &left_idx {
+                        let w = &mut self.project.widgets[i];
+                        Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
+                    }
+                });
+        }
 
-		// Center (design canvas)
-		egui::CentralPanel::default().show(ctx, |ui| {
-			// Fixed canvas to mirror generated app
-			let canvas = egui::Rect::from_min_size(ui.min_rect().min, self.project.canvas_size);
-			self.live_center = Some(canvas);
+        // Right
+        if self.project.panel_right_enabled {
+            egui::SidePanel::right("rb_right")
+                .resizable(true)
+                .show(ctx, |ui| {
+                    let canvas_rect = ui.min_rect();
+                    self.live_right = Some(canvas_rect);
+                    for &i in &right_idx {
+                        let w = &mut self.project.widgets[i];
+                        Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
+                    }
+                });
+        }
 
-			let (resp, _) = ui.allocate_painter(canvas.size(), egui::Sense::hover());
-			let painter_rect = egui::Rect::from_min_size(canvas.min, canvas.size());
+        // Center (design canvas)
+        egui::CentralPanel::default().show(ctx, |ui| {
+            // Fixed canvas to mirror generated app
+            let canvas = egui::Rect::from_min_size(ui.min_rect().min, self.project.canvas_size);
+            self.live_center = Some(canvas);
 
-			self.draw_grid(ui, painter_rect);
+            let (resp, _) = ui.allocate_painter(canvas.size(), egui::Sense::hover());
+            let painter_rect = egui::Rect::from_min_size(canvas.min, canvas.size());
 
-			// Draw Center + Free widgets inside the center canvas
-			for &i in &center_idx {
-				let w = &mut self.project.widgets[i];
-				Self::draw_widget(ui, painter_rect, self.grid_size, &mut self.selected, w);
-			}
-			for &i in &free_idx {
-				let w = &mut self.project.widgets[i];
-				Self::draw_widget(ui, painter_rect, self.grid_size, &mut self.selected, w);
-			}
+            self.draw_grid(ui, painter_rect);
 
-			// --- Drag ghost + drop ---
-			if let Some(kind) = self.spawning.clone() {
-				if let Some(mouse) = ui.ctx().pointer_interact_pos() {
-					let ghost_size = match kind {
-						WidgetKind::Label => vec2(140.0, 24.0),
-						WidgetKind::Button => vec2(160.0, 32.0),
-						WidgetKind::ImageTextButton => vec2(200.0, 36.0),
-						WidgetKind::Checkbox => vec2(160.0, 28.0),
-						WidgetKind::TextEdit => vec2(220.0, 36.0),
-						WidgetKind::Slider => vec2(220.0, 24.0),
-						WidgetKind::ProgressBar => vec2(220.0, 20.0),
-						WidgetKind::RadioGroup => vec2(200.0, 80.0),
-						WidgetKind::Link => vec2(160.0, 20.0),
-						WidgetKind::Hyperlink => vec2(200.0, 20.0),
-						WidgetKind::SelectableLabel => vec2(180.0, 24.0),
-						WidgetKind::ComboBox => vec2(220.0, 28.0),
-						WidgetKind::Separator => vec2(220.0, 8.0),
-						WidgetKind::CollapsingHeader => vec2(260.0, 80.0),
-						WidgetKind::DatePicker => vec2(200.0, 28.0),
-						WidgetKind::AngleSelector => vec2(220.0, 28.0),
-						WidgetKind::Password => vec2(220.0, 36.0),
-						WidgetKind::Tree => vec2(260.0, 200.0),
-					};
-					let ghost = egui::Rect::from_center_size(mouse, ghost_size);
-					let layer = egui::LayerId::new(egui::Order::Tooltip, Id::new("ghost"));
-					let painter = ui.ctx().layer_painter(layer);
-					painter.rect_filled(ghost, 4.0, Color32::from_gray(40));
-					painter.rect_stroke(
-						ghost,
-						CornerRadius::same(4),
-						Stroke::new(1.0, Color32::LIGHT_BLUE),
-						egui::StrokeKind::Outside,
-					);
+            // Draw Center + Free widgets inside the center canvas
+            for &i in &center_idx {
+                let w = &mut self.project.widgets[i];
+                Self::draw_widget(ui, painter_rect, self.grid_size, &mut self.selected, w);
+            }
+            for &i in &free_idx {
+                let w = &mut self.project.widgets[i];
+                Self::draw_widget(ui, painter_rect, self.grid_size, &mut self.selected, w);
+            }
 
-					// highlight target panel
-					let area = self.area_at(mouse);
-					if let Some(hilite) = match area {
-						DockArea::Top    => self.live_top,
-						DockArea::Bottom => self.live_bottom,
-						DockArea::Left   => self.live_left,
-						DockArea::Right  => self.live_right,
-						DockArea::Center | DockArea::Free => self.live_center,
-					} {
-						painter.rect_stroke(
-							hilite,
-							CornerRadius::same(6),
-							Stroke::new(2.0, Color32::LIGHT_BLUE),
-							egui::StrokeKind::Outside,
-						);
-					}
-				}
+            // --- Drag ghost + drop ---
+            if let Some(kind) = self.spawning.clone() {
+                if let Some(mouse) = ui.ctx().pointer_interact_pos() {
+                    let ghost_size = match kind {
+                        WidgetKind::Label => vec2(140.0, 24.0),
+                        WidgetKind::Button => vec2(160.0, 32.0),
+                        WidgetKind::ImageTextButton => vec2(200.0, 36.0),
+                        WidgetKind::Checkbox => vec2(160.0, 28.0),
+                        WidgetKind::TextEdit => vec2(220.0, 36.0),
+                        WidgetKind::Slider => vec2(220.0, 24.0),
+                        WidgetKind::ProgressBar => vec2(220.0, 20.0),
+                        WidgetKind::RadioGroup => vec2(200.0, 80.0),
+                        WidgetKind::Link => vec2(160.0, 20.0),
+                        WidgetKind::Hyperlink => vec2(200.0, 20.0),
+                        WidgetKind::SelectableLabel => vec2(180.0, 24.0),
+                        WidgetKind::ComboBox => vec2(220.0, 28.0),
+                        WidgetKind::Separator => vec2(220.0, 8.0),
+                        WidgetKind::CollapsingHeader => vec2(260.0, 80.0),
+                        WidgetKind::DatePicker => vec2(200.0, 28.0),
+                        WidgetKind::AngleSelector => vec2(220.0, 28.0),
+                        WidgetKind::Password => vec2(220.0, 36.0),
+                        WidgetKind::Tree => vec2(260.0, 200.0),
+                    };
+                    let ghost = egui::Rect::from_center_size(mouse, ghost_size);
+                    let layer = egui::LayerId::new(egui::Order::Tooltip, Id::new("ghost"));
+                    let painter = ui.ctx().layer_painter(layer);
+                    painter.rect_filled(ghost, 4.0, Color32::from_gray(40));
+                    painter.rect_stroke(
+                        ghost,
+                        CornerRadius::same(4),
+                        Stroke::new(1.0, Color32::LIGHT_BLUE),
+                        egui::StrokeKind::Outside,
+                    );
 
-				if ui.input(|i| i.pointer.any_released()) {
-					if let Some(pos) = ui.ctx().pointer_interact_pos() {
-						let area = self.area_at(pos);
-						if let Some(origin) = self.origin_for_area(area) {
-							self.spawn_widget(kind, pos, area, origin);
-						}
-					}
-					self.spawning = None;
-				}
-			}
+                    // highlight target panel
+                    let area = self.area_at(mouse);
+                    if let Some(hilite) = match area {
+                        DockArea::Top => self.live_top,
+                        DockArea::Bottom => self.live_bottom,
+                        DockArea::Left => self.live_left,
+                        DockArea::Right => self.live_right,
+                        DockArea::Center | DockArea::Free => self.live_center,
+                    } {
+                        painter.rect_stroke(
+                            hilite,
+                            CornerRadius::same(6),
+                            Stroke::new(2.0, Color32::LIGHT_BLUE),
+                            egui::StrokeKind::Outside,
+                        );
+                    }
+                }
 
-			if resp.clicked() {
-				self.selected = None;
-			}
-		});
-	}
+                if ui.input(|i| i.pointer.any_released()) {
+                    if let Some(pos) = ui.ctx().pointer_interact_pos() {
+                        let area = self.area_at(pos);
+                        if let Some(origin) = self.origin_for_area(area) {
+                            self.spawn_widget(kind, pos, area, origin);
+                        }
+                    }
+                    self.spawning = None;
+                }
+            }
+
+            if resp.clicked() {
+                self.selected = None;
+            }
+        });
+    }
 
     fn draw_grid(&self, ui: &mut egui::Ui, rect: Rect) {
         let painter = ui.painter_at(rect);
@@ -994,30 +1010,10 @@ impl RadBuilderApp {
                 ui.separator();
                 ui.strong("Panels");
                 ui.add_space(4.0);
-                ui.horizontal(|ui|{
-                    ui.checkbox(&mut self.project.panel_top_enabled, "Top");
-                    ui.add_enabled(self.project.panel_top_enabled,
-                        egui::DragValue::new(&mut self.project.panel_top_h).range(0.0..=1000.0).speed(1.0)
-                    ).on_hover_text("Top panel height");
-                });
-                ui.horizontal(|ui|{
-                    ui.checkbox(&mut self.project.panel_bottom_enabled, "Bottom");
-                    ui.add_enabled(self.project.panel_bottom_enabled,
-                        egui::DragValue::new(&mut self.project.panel_bottom_h).range(0.0..=1000.0).speed(1.0)
-                    ).on_hover_text("Bottom panel height");
-                });
-                ui.horizontal(|ui|{
-                    ui.checkbox(&mut self.project.panel_left_enabled, "Left");
-                    ui.add_enabled(self.project.panel_left_enabled,
-                        egui::DragValue::new(&mut self.project.panel_left_w).range(0.0..=1000.0).speed(1.0)
-                    ).on_hover_text("Left panel width");
-                });
-                ui.horizontal(|ui|{
-                    ui.checkbox(&mut self.project.panel_right_enabled, "Right");
-                    ui.add_enabled(self.project.panel_right_enabled,
-                        egui::DragValue::new(&mut self.project.panel_right_w).range(0.0..=1000.0).speed(1.0)
-                    ).on_hover_text("Right panel width");
-                });
+                ui.checkbox(&mut self.project.panel_top_enabled, "Top");
+                ui.checkbox(&mut self.project.panel_bottom_enabled, "Bottom");
+                ui.checkbox(&mut self.project.panel_left_enabled, "Left");
+                ui.checkbox(&mut self.project.panel_right_enabled, "Right");
             });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if ui.button("Generate Code").clicked() {
@@ -1078,9 +1074,9 @@ impl RadBuilderApp {
 
         out.push_str("struct GeneratedState {\n");
         out.push_str(&format!(
-			"    enable_top: bool, enable_bottom: bool, enable_left: bool, enable_right: bool,\n"
-		));
-		out.push_str("    pr_top_h: f32, pr_bottom_h: f32, pr_left_w: f32, pr_right_w: f32,\n");
+            "    enable_top: bool, enable_bottom: bool, enable_left: bool, enable_right: bool,\n"
+        ));
+        out.push_str("    pr_top_h: f32, pr_bottom_h: f32, pr_left_w: f32, pr_right_w: f32,\n");
         for w in &self.project.widgets {
             match w.kind {
                 WidgetKind::TextEdit => out.push_str(&format!("    text_{}: String,\n", w.id)),
@@ -1105,20 +1101,29 @@ impl RadBuilderApp {
         out.push_str("impl Default for GeneratedState {\n");
         out.push_str("    fn default() -> Self {\n");
         out.push_str("        Self {\n");
-		out.push_str(&format!(
-				"            enable_top: {}, enable_bottom: {}, enable_left: {}, enable_right: {},\n",
-				if self.project.panel_top_enabled { "true" } else { "false" },
-				if self.project.panel_bottom_enabled { "true" } else { "false" },
-				if self.project.panel_left_enabled { "true" } else { "false" },
-				if self.project.panel_right_enabled { "true" } else { "false" },
-			));
-		out.push_str(&format!(
-			"            pr_top_h: {:.1}, pr_bottom_h: {:.1}, pr_left_w: {:.1}, pr_right_w: {:.1},\n",
-			self.project.panel_top_h,
-			self.project.panel_bottom_h,
-			self.project.panel_left_w,
-			self.project.panel_right_w
-		));
+        out.push_str(&format!(
+            "            enable_top: {}, enable_bottom: {}, enable_left: {}, enable_right: {},\n",
+            if self.project.panel_top_enabled {
+                "true"
+            } else {
+                "false"
+            },
+            if self.project.panel_bottom_enabled {
+                "true"
+            } else {
+                "false"
+            },
+            if self.project.panel_left_enabled {
+                "true"
+            } else {
+                "false"
+            },
+            if self.project.panel_right_enabled {
+                "true"
+            } else {
+                "false"
+            },
+        ));
 
         for w in &self.project.widgets {
             match w.kind {
@@ -1467,93 +1472,89 @@ impl RadBuilderApp {
             }
         };
 
-		let mut top = Vec::new();
-		let mut bottom = Vec::new();
-		let mut left = Vec::new();
-		let mut right = Vec::new();
-		let mut center = Vec::new();
-		let mut free = Vec::new();
-		for w in &self.project.widgets {
-			match w.area {
-				Top => top.push(w),
-				Bottom => bottom.push(w),
-				Left => left.push(w),
-				Right => right.push(w),
-				Center => center.push(w),
-				Free => free.push(w),
-			}
-		}
+        let mut top = Vec::new();
+        let mut bottom = Vec::new();
+        let mut left = Vec::new();
+        let mut right = Vec::new();
+        let mut center = Vec::new();
+        let mut free = Vec::new();
+        for w in &self.project.widgets {
+            match w.area {
+                Top => top.push(w),
+                Bottom => bottom.push(w),
+                Left => left.push(w),
+                Right => right.push(w),
+                Center => center.push(w),
+                Free => free.push(w),
+            }
+        }
 
         out.push_str("fn generated_ui(ctx: &egui::Context, state: &mut GeneratedState) {\n");
 
-		// TOP
-		out.push_str("    if state.enable_top {\n");
-		out.push_str("        egui::TopBottomPanel::top(\"gen_top\")\n");
-		out.push_str("            .resizable(true)\n");
-		out.push_str("            .default_height(state.pr_top_h)\n");
-		out.push_str("            .show(ctx, |ui| {\n");
-		for w in top {
-			emit_widget(w, &mut out, "ui.min_rect().min");
-		}
-		out.push_str("            });\n");
-		out.push_str("    }\n");
+        // TOP
+        out.push_str("    if state.enable_top {\n");
+        out.push_str("        egui::TopBottomPanel::top(\"gen_top\")\n");
+        out.push_str("            .resizable(true)\n");
+        out.push_str("            .show(ctx, |ui| {\n");
+        for w in top {
+            emit_widget(w, &mut out, "ui.min_rect().min");
+        }
+        out.push_str("            });\n");
+        out.push_str("    }\n");
 
-		// BOTTOM
-		out.push_str("    if state.enable_bottom {\n");
-		out.push_str("        egui::TopBottomPanel::bottom(\"gen_bottom\")\n");
-		out.push_str("            .resizable(true)\n");
-		out.push_str("            .default_height(state.pr_bottom_h)\n");
-		out.push_str("            .show(ctx, |ui| {\n");
-		for w in bottom {
-			emit_widget(w, &mut out, "ui.min_rect().min");
-		}
-		out.push_str("            });\n");
-		out.push_str("    }\n");
+        // BOTTOM
+        out.push_str("    if state.enable_bottom {\n");
+        out.push_str("        egui::TopBottomPanel::bottom(\"gen_bottom\")\n");
+        out.push_str("            .resizable(true)\n");
+        out.push_str("            .show(ctx, |ui| {\n");
+        for w in bottom {
+            emit_widget(w, &mut out, "ui.min_rect().min");
+        }
+        out.push_str("            });\n");
+        out.push_str("    }\n");
 
-		// LEFT
-		out.push_str("    if state.enable_left {\n");
-		out.push_str("        egui::SidePanel::left(\"gen_left\")\n");
-		out.push_str("            .resizable(true)\n");
-		out.push_str("            .default_width(state.pr_left_w)\n");
-		out.push_str("            .show(ctx, |ui| {\n");
-		for w in left {
-			emit_widget(w, &mut out, "ui.min_rect().min");
-		}
-		out.push_str("            });\n");
-		out.push_str("    }\n");
+        // LEFT
+        out.push_str("    if state.enable_left {\n");
+        out.push_str("        egui::SidePanel::left(\"gen_left\")\n");
+        out.push_str("            .resizable(true)\n");
+        out.push_str("            .show(ctx, |ui| {\n");
+        for w in left {
+            emit_widget(w, &mut out, "ui.min_rect().min");
+        }
+        out.push_str("            });\n");
+        out.push_str("    }\n");
 
-		// RIGHT
-		out.push_str("    if state.enable_right {\n");
-		out.push_str("        egui::SidePanel::right(\"gen_right\")\n");
-		out.push_str("            .resizable(true)\n");
-		out.push_str("            .default_width(state.pr_right_w)\n");
-		out.push_str("            .show(ctx, |ui| {\n");
-		for w in right {
-			emit_widget(w, &mut out, "ui.min_rect().min");
-		}
-		out.push_str("            });\n");
-		out.push_str("    }\n");
+        // RIGHT
+        out.push_str("    if state.enable_right {\n");
+        out.push_str("        egui::SidePanel::right(\"gen_right\")\n");
+        out.push_str("            .resizable(true)\n");
+        out.push_str("            .show(ctx, |ui| {\n");
+        for w in right {
+            emit_widget(w, &mut out, "ui.min_rect().min");
+        }
+        out.push_str("            });\n");
+        out.push_str("    }\n");
 
-		// CENTER (+ FREE): use CentralPanel; widgets are placed absolutely within it.
-		out.push_str("    egui::CentralPanel::default().show(ctx, |ui| {\n");
-		// fixed logical canvas (keeps your designed size)
-		out.push_str(&format!(
+        // CENTER (+ FREE): use CentralPanel; widgets are placed absolutely within it.
+        out.push_str("    egui::CentralPanel::default().show(ctx, |ui| {\n");
+        // fixed logical canvas (keeps your designed size)
+        out.push_str(&format!(
 			"        let canvas = egui::Rect::from_min_size(ui.min_rect().min, egui::vec2({:.1}, {:.1}));\n",
 			self.project.canvas_size.x, self.project.canvas_size.y
 		));
-		out.push_str("        let _ = ui.allocate_painter(canvas.size(), egui::Sense::hover());\n");
-		for w in center {
-			emit_widget(w, &mut out, "canvas.min");
-		}
-		for w in free {
-			emit_widget(w, &mut out, "canvas.min");
-		}
-		out.push_str("    });\n");
+        out.push_str("        let _ = ui.allocate_painter(canvas.size(), egui::Sense::hover());\n");
+        for w in center {
+            emit_widget(w, &mut out, "canvas.min");
+        }
+        for w in free {
+            emit_widget(w, &mut out, "canvas.min");
+        }
+        out.push_str("    });\n");
 
-		out.push_str("}\n\n");
+        out.push_str("}\n\n");
 
-		// ---------- Example eframe app (updated to call generated_ui with ctx) ----------
-		out.push_str(
+        // ---------- Example eframe app (updated to call generated_ui with ctx) ----------
+        out.push_str(
 			"pub struct GeneratedApp { state: GeneratedState }\n\
 			 impl Default for GeneratedApp { fn default() -> Self { Self { state: Default::default() } } }\n\
 			 impl eframe::App for GeneratedApp {\n\
@@ -1567,7 +1568,7 @@ impl RadBuilderApp {
 			 }\n",
 		);
 
-		out
+        out
     }
 }
 
@@ -1588,9 +1589,9 @@ impl eframe::App for RadBuilderApp {
                 ui.separator();
                 self.generated_panel(ui);
             });
-        
+
         self.preview_panels_ui(ctx);
-        
+
         if self.spawning.is_some() {
             ctx.set_cursor_icon(egui::CursorIcon::Grabbing);
         }
