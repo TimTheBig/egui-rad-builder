@@ -67,7 +67,10 @@ impl RadBuilderApp {
             pos2((canvas.max.x - r).max(canvas.min.x), top.max.y),
             pos2(canvas.max.x, bottom.min.y),
         );
-        let center = Rect::from_min_max(left.max, right.min); // remaining space
+        let center = Rect::from_min_max(
+			pos2(left.max.x,  top.max.y),
+			pos2(right.min.x, bottom.min.y),
+		);
         PanelRects {
             top,
             bottom,
