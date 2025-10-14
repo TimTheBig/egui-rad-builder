@@ -19,6 +19,11 @@ pub(crate) struct RadBuilderApp {
     generated: String,
     // Settings
     grid_size: f32,
+	live_top: Option<Rect>,
+    live_bottom: Option<Rect>,
+    live_left: Option<Rect>,
+    live_right: Option<Rect>,
+    live_center: Option<Rect>,
 }
 
 impl Default for RadBuilderApp {
@@ -31,63 +36,33 @@ impl Default for RadBuilderApp {
             spawning: None,
             generated: String::new(),
             grid_size: 8.0,
+            live_top: None,
+            live_bottom: None,
+            live_left: None,
+            live_right: None,
+            live_center: None,
         }
     }
-}
-
-struct PanelRects {
-    top: Rect,
-    bottom: Rect,
-    left: Rect,
-    right: Rect,
-    center: Rect,
 }
 
 impl RadBuilderApp {
-    fn panel_rects(&self,canvas:Rect)->PanelRects{
-        // Collapse sizes to 0 if panel is disabled
-        let t = if self.project.panel_top_enabled    { self.project.panel_top_h.max(0.0) }    else { 0.0 };
-        let b = if self.project.panel_bottom_enabled { self.project.panel_bottom_h.max(0.0) } else { 0.0 };
-        let l = if self.project.panel_left_enabled   { self.project.panel_left_w.max(0.0) }   else { 0.0 };
-        let r = if self.project.panel_right_enabled  { self.project.panel_right_w.max(0.0) }  else { 0.0 };
-
-        let top = Rect::from_min_max(
-            canvas.min,
-            pos2(canvas.max.x, (canvas.min.y + t).min(canvas.max.y)),
-        );
-        let bottom = Rect::from_min_max(
-            pos2(canvas.min.x, (canvas.max.y - b).max(canvas.min.y)),
-            canvas.max,
-        );
-        let left = Rect::from_min_max(
-            pos2(canvas.min.x, top.max.y),
-            pos2((canvas.min.x + l).min(canvas.max.x), bottom.min.y),
-        );
-        let right = Rect::from_min_max(
-            pos2((canvas.max.x - r).max(canvas.min.x), top.max.y),
-            pos2(canvas.max.x, bottom.min.y),
-        );
-        let center = Rect::from_min_max(
-			pos2(left.max.x,  top.max.y),
-			pos2(right.min.x, bottom.min.y),
-		);
-        PanelRects {
-            top,
-            bottom,
-            left,
-            right,
-            center,
-        }
+    fn area_at(&self, pos: Pos2) -> DockArea {
+        if let Some(r) = self.live_top     { if r.contains(pos) { return DockArea::Top; } }
+        if let Some(r) = self.live_bottom  { if r.contains(pos) { return DockArea::Bottom; } }
+        if let Some(r) = self.live_left    { if r.contains(pos) { return DockArea::Left; } }
+        if let Some(r) = self.live_right   { if r.contains(pos) { return DockArea::Right; } }
+        if let Some(r) = self.live_center  { if r.contains(pos) { return DockArea::Center; } }
+        DockArea::Free
     }
-    
-    fn area_rect_for(pr: &PanelRects, canvas: Rect, area: DockArea) -> Rect {
+
+    fn origin_for_area(&self, area: DockArea) -> Option<Pos2> {
         match area {
-            DockArea::Free => canvas,
-            DockArea::Top => pr.top,
-            DockArea::Bottom => pr.bottom,
-            DockArea::Left => pr.left,
-            DockArea::Right => pr.right,
-            DockArea::Center => pr.center,
+            DockArea::Top    => self.live_top.map(|r| r.min),
+            DockArea::Bottom => self.live_bottom.map(|r| r.min),
+            DockArea::Left   => self.live_left.map(|r| r.min),
+            DockArea::Right  => self.live_right.map(|r| r.min),
+            DockArea::Center => self.live_center.map(|r| r.min),
+            DockArea::Free   => self.live_center.map(|r| r.min), // place Free inside center canvas
         }
     }
 
@@ -276,144 +251,190 @@ impl RadBuilderApp {
         let id = self.selected?;
         self.project.widgets.iter_mut().find(|w| w.id == id)
     }
+    
+	fn preview_panels_ui(&mut self, ctx: &egui::Context) {
+		use DockArea::*;
 
-    fn canvas_ui(&mut self, ui: &mut egui::Ui) {
-        // The design canvas area
-        let (canvas_resp,_painter)=ui.allocate_painter(self.project.canvas_size,Sense::click_and_drag());
-        let canvas_rect = canvas_resp.rect;
+		// Optional: stable visual order
+		self.project.widgets.sort_by_key(|w| w.z);
 
-        // compute panel rects & paint subtle backgrounds
-        let pr = self.panel_rects(canvas_rect);
-        
-        // Draw grid first so it stays underneath panels & widgets
-        self.draw_grid(ui,canvas_rect);
-        
-        let p=ui.painter();
-        
-        let bg = Color32::from_gray(28);
-        let draw_panel = |rect: Rect, label: &str| {
-			if !rect.is_positive() { return; } // skip 0-size rects
-			p.rect_filled(rect, 4.0, bg);
-			p.rect_stroke(
-				rect,
-				CornerRadius::same(4),
-				Stroke::new(1.0, Color32::from_gray(70)),
-				egui::StrokeKind::Outside,
-			);
-			p.text(
-				rect.left_top() + vec2(6.0, 4.0),
-				egui::Align2::LEFT_TOP,
-				label,
-				egui::FontId::monospace(11.0),
-				Color32::from_gray(180),
-			);
-		};
-		
-		if self.project.panel_top_enabled    { draw_panel(pr.top,    "Top Panel"); }
-		if self.project.panel_bottom_enabled { draw_panel(pr.bottom, "Bottom Panel"); }
-		if self.project.panel_left_enabled   { draw_panel(pr.left,   "Left Panel"); }
-		if self.project.panel_right_enabled  { draw_panel(pr.right,  "Right Panel"); }
-		draw_panel(pr.center, "Center Panel");
+		// Reset live rects each frame
+		self.live_top = None;
+		self.live_bottom = None;
+		self.live_left = None;
+		self.live_right = None;
+		self.live_center = None;
 
-        // Spawn from palette drag-preview
-        if let Some(kind) = self.spawning.clone() {
-            if let Some(mouse) = ui.ctx().pointer_interact_pos() {
-                let ghost_size = match kind {
-                    WidgetKind::Label => vec2(140.0, 24.0),
-                    WidgetKind::Button => vec2(160.0, 32.0),
-                    WidgetKind::ImageTextButton => vec2(200.0, 36.0),
-                    WidgetKind::Checkbox => vec2(160.0, 28.0),
-                    WidgetKind::TextEdit => vec2(220.0, 36.0),
-                    WidgetKind::Slider => vec2(220.0, 24.0),
-                    WidgetKind::ProgressBar => vec2(220.0, 20.0),
-                    WidgetKind::RadioGroup => vec2(200.0, 80.0),
-                    WidgetKind::Link => vec2(160.0, 20.0),
-                    WidgetKind::Hyperlink => vec2(200.0, 20.0),
-                    WidgetKind::SelectableLabel => vec2(180.0, 24.0),
-                    WidgetKind::ComboBox => vec2(220.0, 28.0),
-                    WidgetKind::Separator => vec2(220.0, 8.0),
-                    WidgetKind::CollapsingHeader => vec2(260.0, 80.0),
-                    WidgetKind::DatePicker => vec2(200.0, 28.0),
-                    WidgetKind::AngleSelector => vec2(220.0, 28.0),
-                    WidgetKind::Password => vec2(220.0, 36.0),
-                    WidgetKind::Tree => vec2(260.0, 200.0),
-                };
-                let ghost = Rect::from_center_size(mouse, ghost_size);
-                let layer = egui::LayerId::new(egui::Order::Tooltip, Id::new("ghost"));
-                let painter = ui.ctx().layer_painter(layer);
-                painter.rect_filled(ghost, 4.0, Color32::from_gray(40));
-                painter.rect_stroke(
-                    ghost,
-                    CornerRadius::same(4),
-                    Stroke::new(1.0, Color32::LIGHT_BLUE),
-                    egui::StrokeKind::Outside,
-                );
-                let area = if pr.top.contains(mouse) {
-                    DockArea::Top
-                } else if pr.bottom.contains(mouse) {
-                    DockArea::Bottom
-                } else if pr.left.contains(mouse) {
-                    DockArea::Left
-                } else if pr.right.contains(mouse) {
-                    DockArea::Right
-                } else if pr.center.contains(mouse) {
-                    DockArea::Center
-                } else {
-                    DockArea::Free
-                };
-                let hilite = Self::area_rect_for(&pr, canvas_rect, area);
-                painter.rect_stroke(
-                    hilite,
-                    CornerRadius::same(6),
-                    Stroke::new(2.0, Color32::LIGHT_BLUE),
-                    egui::StrokeKind::Outside,
-                );
-                painter.text(
-                    ghost.center(),
-                    egui::Align2::CENTER_CENTER,
-                    format!("{:?}", kind),
-                    egui::FontId::proportional(14.0),
-                    Color32::LIGHT_BLUE,
-                );
-            }
-            // Drop on mouse release inside canvas
-            if ui.input(|i| i.pointer.any_released()) {
-                if let Some(pos) = ui.ctx().pointer_interact_pos() {
-                    if canvas_rect.contains(pos) {
-                        // choose area by where mouse is
-                        let area = if pr.top.contains(pos) {
-                            DockArea::Top
-                        } else if pr.bottom.contains(pos) {
-                            DockArea::Bottom
-                        } else if pr.left.contains(pos) {
-                            DockArea::Left
-                        } else if pr.right.contains(pos) {
-                            DockArea::Right
-                        } else if pr.center.contains(pos) {
-                            DockArea::Center
-                        } else {
-                            DockArea::Free
-                        };
-                        let origin = Self::area_rect_for(&pr, canvas_rect, area).min;
-                        self.spawn_widget(kind, pos, area, origin);
-                    }
-                }
-                self.spawning = None;
-            }
-        }
+		// -------- 1) Bucket INDICES (not &mut) by area in a read-only pass --------
+		let mut top_idx    = Vec::new();
+		let mut bottom_idx = Vec::new();
+		let mut left_idx   = Vec::new();
+		let mut right_idx  = Vec::new();
+		let mut center_idx = Vec::new();
+		let mut free_idx   = Vec::new();
 
-        // draw widgets relative to their area rects
-        self.project.widgets.sort_by_key(|w| w.z);
-        for w in &mut self.project.widgets {
-            let area_rect = Self::area_rect_for(&pr, canvas_rect, w.area);
-            Self::draw_widget(ui, area_rect, self.grid_size, &mut self.selected, w);
-        }
+		for (i, w) in self.project.widgets.iter().enumerate() {
+			match w.area {
+				Top    => top_idx.push(i),
+				Bottom => bottom_idx.push(i),
+				Left   => left_idx.push(i),
+				Right  => right_idx.push(i),
+				Center => center_idx.push(i),
+				Free   => free_idx.push(i),
+			}
+		}
 
-        // Click empty space to clear selection
-        if canvas_resp.clicked() {
-            self.selected = None;
-        }
-    }
+		// -------- 2) Real egui panels; draw by indexing back into the Vec --------
+
+		// Top
+		if self.project.panel_top_enabled {
+			egui::TopBottomPanel::top("rb_top")
+				.resizable(true)
+				.default_height(self.project.panel_top_h)
+				.show(ctx, |ui| {
+					let canvas_rect = ui.min_rect();
+					self.live_top = Some(canvas_rect);
+					for &i in &top_idx {
+						let w = &mut self.project.widgets[i];
+						Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
+					}
+				});
+		}
+
+		// Bottom
+		if self.project.panel_bottom_enabled {
+			egui::TopBottomPanel::bottom("rb_bottom")
+				.resizable(true)
+				.default_height(self.project.panel_bottom_h)
+				.show(ctx, |ui| {
+					let canvas_rect = ui.min_rect();
+					self.live_bottom = Some(canvas_rect);
+					for &i in &bottom_idx {
+						let w = &mut self.project.widgets[i];
+						Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
+					}
+				});
+		}
+
+		// Left
+		if self.project.panel_left_enabled {
+			egui::SidePanel::left("rb_left")
+				.resizable(true)
+				.default_width(self.project.panel_left_w)
+				.show(ctx, |ui| {
+					let canvas_rect = ui.min_rect();
+					self.live_left = Some(canvas_rect);
+					for &i in &left_idx {
+						let w = &mut self.project.widgets[i];
+						Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
+					}
+				});
+		}
+
+		// Right
+		if self.project.panel_right_enabled {
+			egui::SidePanel::right("rb_right")
+				.resizable(true)
+				.default_width(self.project.panel_right_w)
+				.show(ctx, |ui| {
+					let canvas_rect = ui.min_rect();
+					self.live_right = Some(canvas_rect);
+					for &i in &right_idx {
+						let w = &mut self.project.widgets[i];
+						Self::draw_widget(ui, canvas_rect, self.grid_size, &mut self.selected, w);
+					}
+				});
+		}
+
+		// Center (design canvas)
+		egui::CentralPanel::default().show(ctx, |ui| {
+			// Fixed canvas to mirror generated app
+			let canvas = egui::Rect::from_min_size(ui.min_rect().min, self.project.canvas_size);
+			self.live_center = Some(canvas);
+
+			let (resp, _) = ui.allocate_painter(canvas.size(), egui::Sense::hover());
+			let painter_rect = egui::Rect::from_min_size(canvas.min, canvas.size());
+
+			self.draw_grid(ui, painter_rect);
+
+			// Draw Center + Free widgets inside the center canvas
+			for &i in &center_idx {
+				let w = &mut self.project.widgets[i];
+				Self::draw_widget(ui, painter_rect, self.grid_size, &mut self.selected, w);
+			}
+			for &i in &free_idx {
+				let w = &mut self.project.widgets[i];
+				Self::draw_widget(ui, painter_rect, self.grid_size, &mut self.selected, w);
+			}
+
+			// --- Drag ghost + drop ---
+			if let Some(kind) = self.spawning.clone() {
+				if let Some(mouse) = ui.ctx().pointer_interact_pos() {
+					let ghost_size = match kind {
+						WidgetKind::Label => vec2(140.0, 24.0),
+						WidgetKind::Button => vec2(160.0, 32.0),
+						WidgetKind::ImageTextButton => vec2(200.0, 36.0),
+						WidgetKind::Checkbox => vec2(160.0, 28.0),
+						WidgetKind::TextEdit => vec2(220.0, 36.0),
+						WidgetKind::Slider => vec2(220.0, 24.0),
+						WidgetKind::ProgressBar => vec2(220.0, 20.0),
+						WidgetKind::RadioGroup => vec2(200.0, 80.0),
+						WidgetKind::Link => vec2(160.0, 20.0),
+						WidgetKind::Hyperlink => vec2(200.0, 20.0),
+						WidgetKind::SelectableLabel => vec2(180.0, 24.0),
+						WidgetKind::ComboBox => vec2(220.0, 28.0),
+						WidgetKind::Separator => vec2(220.0, 8.0),
+						WidgetKind::CollapsingHeader => vec2(260.0, 80.0),
+						WidgetKind::DatePicker => vec2(200.0, 28.0),
+						WidgetKind::AngleSelector => vec2(220.0, 28.0),
+						WidgetKind::Password => vec2(220.0, 36.0),
+						WidgetKind::Tree => vec2(260.0, 200.0),
+					};
+					let ghost = egui::Rect::from_center_size(mouse, ghost_size);
+					let layer = egui::LayerId::new(egui::Order::Tooltip, Id::new("ghost"));
+					let painter = ui.ctx().layer_painter(layer);
+					painter.rect_filled(ghost, 4.0, Color32::from_gray(40));
+					painter.rect_stroke(
+						ghost,
+						CornerRadius::same(4),
+						Stroke::new(1.0, Color32::LIGHT_BLUE),
+						egui::StrokeKind::Outside,
+					);
+
+					// highlight target panel
+					let area = self.area_at(mouse);
+					if let Some(hilite) = match area {
+						DockArea::Top    => self.live_top,
+						DockArea::Bottom => self.live_bottom,
+						DockArea::Left   => self.live_left,
+						DockArea::Right  => self.live_right,
+						DockArea::Center | DockArea::Free => self.live_center,
+					} {
+						painter.rect_stroke(
+							hilite,
+							CornerRadius::same(6),
+							Stroke::new(2.0, Color32::LIGHT_BLUE),
+							egui::StrokeKind::Outside,
+						);
+					}
+				}
+
+				if ui.input(|i| i.pointer.any_released()) {
+					if let Some(pos) = ui.ctx().pointer_interact_pos() {
+						let area = self.area_at(pos);
+						if let Some(origin) = self.origin_for_area(area) {
+							self.spawn_widget(kind, pos, area, origin);
+						}
+					}
+					self.spawning = None;
+				}
+			}
+
+			if resp.clicked() {
+				self.selected = None;
+			}
+		});
+	}
 
     fn draw_grid(&self, ui: &mut egui::Ui, rect: Rect) {
         let painter = ui.painter_at(rect);
@@ -436,7 +457,6 @@ impl RadBuilderApp {
         }
     }
 
-    // NOTE: now `canvas_rect` is actually the rect of the widget's area
     fn draw_widget(
         ui: &mut egui::Ui,
         canvas_rect: Rect,
@@ -1568,10 +1588,9 @@ impl eframe::App for RadBuilderApp {
                 ui.separator();
                 self.generated_panel(ui);
             });
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.style_mut().spacing.item_spacing = vec2(0.0, 0.0);
-            self.canvas_ui(ui);
-        });
+        
+        self.preview_panels_ui(ctx);
+        
         if self.spawning.is_some() {
             ctx.set_cursor_icon(egui::CursorIcon::Grabbing);
         }
