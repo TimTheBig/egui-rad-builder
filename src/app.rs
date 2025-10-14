@@ -1074,7 +1074,6 @@ impl RadBuilderApp {
         out.push_str(&format!(
             "    enable_top: bool, enable_bottom: bool, enable_left: bool, enable_right: bool,\n"
         ));
-        out.push_str("    pr_top_h: f32, pr_bottom_h: f32, pr_left_w: f32, pr_right_w: f32,\n");
         for w in &self.project.widgets {
             match w.kind {
                 WidgetKind::TextEdit => out.push_str(&format!("    text_{}: String,\n", w.id)),
