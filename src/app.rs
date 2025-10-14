@@ -877,10 +877,10 @@ impl RadBuilderApp {
                 | WidgetKind::ComboBox
                 | WidgetKind::Tree
                 | WidgetKind::Separator => {}
-                | WidgetKind::MenuButton => {
-					ui.label("Text");
-					ui.text_edit_singleline(&mut w.props.text);
-				}
+                WidgetKind::MenuButton => {
+                    ui.label("Text");
+                    ui.text_edit_singleline(&mut w.props.text);
+                }
             }
             match w.kind {
                 WidgetKind::ImageTextButton => {
