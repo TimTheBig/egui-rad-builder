@@ -51,6 +51,7 @@ pub(crate) struct Widget {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "t", content = "c")]
 pub(crate) enum WidgetKind {
+	MenuButton,
     Label,
     Button,
     ImageTextButton,

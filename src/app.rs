@@ -99,6 +99,7 @@ impl RadBuilderApp {
         self.next_id += 1;
 
         let (size, props) = match kind {
+			WidgetKind::MenuButton=>{let mut p=WidgetProps{text:"Menu".into(),..Default::default()};p.items=vec!["First".into(),"Second".into(),"Third".into()];p.selected=0;(vec2(180.0,28.0),p)}
             WidgetKind::Label => (
                 vec2(140.0, 24.0),
                 WidgetProps {
@@ -391,6 +392,7 @@ impl RadBuilderApp {
             if let Some(kind) = self.spawning.clone() {
                 if let Some(mouse) = ui.ctx().pointer_interact_pos() {
                     let ghost_size = match kind {
+						WidgetKind::MenuButton=>vec2(180.0,28.0),
                         WidgetKind::Label => vec2(140.0, 24.0),
                         WidgetKind::Button => vec2(160.0, 32.0),
                         WidgetKind::ImageTextButton => vec2(200.0, 36.0),
@@ -487,6 +489,19 @@ impl RadBuilderApp {
         let rect = Rect::from_min_size(canvas_rect.min + w.pos.to_vec2(), w.size);
         ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
             match w.kind {
+				WidgetKind::MenuButton=>{
+					let items = if w.props.items.is_empty(){ vec!["Item".into()] } else { w.props.items.clone() };
+					let mut sel = w.props.selected.min(items.len()-1);
+					ui.menu_button(&w.props.text, |ui| {
+						for (i, it) in items.iter().enumerate() {
+							if ui.button(it).clicked() {
+								sel = i;
+								ui.close_kind(egui::UiKind::Menu);
+							}
+						}
+					});
+					w.props.selected = sel;
+				}
                 WidgetKind::Label => {
                     ui.vertical_centered(|ui| {
                         ui.label(&w.props.text);
@@ -778,6 +793,7 @@ impl RadBuilderApp {
         ui.label("Drag any control onto the canvas");
         ui.add_space(8.0);
 
+		self.palette_item(ui, "Menu Button",WidgetKind::MenuButton);
         self.palette_item(ui, "Label", WidgetKind::Label);
         self.palette_item(ui, "Button", WidgetKind::Button);
         self.palette_item(ui, "Image + Text Button", WidgetKind::ImageTextButton);
@@ -840,6 +856,7 @@ impl RadBuilderApp {
                 | WidgetKind::ComboBox
                 | WidgetKind::Tree
                 | WidgetKind::Separator => {}
+                | WidgetKind::MenuButton=>{}
             }
             match w.kind {
                 WidgetKind::ImageTextButton => {
@@ -864,7 +881,7 @@ impl RadBuilderApp {
                     ui.label("URL");
                     ui.text_edit_singleline(&mut w.props.url);
                 }
-                WidgetKind::RadioGroup | WidgetKind::ComboBox | WidgetKind::Tree => {
+                WidgetKind::RadioGroup | WidgetKind::ComboBox | WidgetKind::Tree | WidgetKind::MenuButton => {
                     ui.label(match w.kind {
                         WidgetKind::Tree => "Nodes (indent with spaces; 2 spaces per level)",
                         _ => "Items (one per line)",
@@ -1088,7 +1105,7 @@ impl RadBuilderApp {
                 WidgetKind::Slider => out.push_str(&format!("    value_{}: f32,\n", w.id)),
                 WidgetKind::ProgressBar => out.push_str(&format!("    progress_{}: f32,\n", w.id)),
                 WidgetKind::SelectableLabel => out.push_str(&format!("    sel_{}: bool,\n", w.id)),
-                WidgetKind::RadioGroup | WidgetKind::ComboBox => {
+                WidgetKind::RadioGroup | WidgetKind::ComboBox | WidgetKind::MenuButton => {
                     out.push_str(&format!("    sel_{}: usize,\n", w.id))
                 }
                 WidgetKind::CollapsingHeader => {
@@ -1162,7 +1179,7 @@ impl RadBuilderApp {
                         if w.props.checked { "true" } else { "false" }
                     ));
                 }
-                WidgetKind::RadioGroup | WidgetKind::ComboBox => {
+                WidgetKind::RadioGroup | WidgetKind::ComboBox | WidgetKind::MenuButton => {
                     let sel = if w.props.items.is_empty() {
                         0
                     } else {
@@ -1211,6 +1228,27 @@ impl RadBuilderApp {
             let pos = w.pos;
             let size = w.size;
             match w.kind {
+				WidgetKind::MenuButton=>{
+					let items_code = if w.props.items.is_empty() {
+						"\"Item\".to_string()".to_owned()
+					} else {
+						w.props.items.iter().map(|s| format!("\"{}\".to_string()", escape(s))).collect::<Vec<_>>().join(", ")
+					};
+					out.push_str(&format!(
+						"    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({x:.1},{y:.1}), egui::vec2({w:.1},{h:.1})), |ui| {{\n",
+						x=w.pos.x, y=w.pos.y, w=w.size.x, h=w.size.y
+					));
+					out.push_str(&format!("        let items = vec![{items}];\n", items=items_code));
+					out.push_str(&format!(
+						"        ui.menu_button(\"{}\", |ui| {{\n", escape(&w.props.text)
+					));
+					out.push_str(&format!(
+						"            for (i, it) in items.iter().enumerate() {{ if ui.button(it).clicked() {{ state.sel_{id} = i; ui.close_kind(egui::UiKind::Menu); }} }}\n",
+						id = w.id
+					));
+					out.push_str("        });\n");
+					out.push_str("    });\n");
+				}
                 WidgetKind::Label => out.push_str(&format!(
                     "    ui.allocate_ui_at_rect(egui::Rect::from_min_size({origin} + egui::vec2({:.1},{:.1}), egui::vec2({:.1},{:.1})), |ui| {{ ui.label(\"{}\"); }});\n",
                     pos.x,pos.y,size.x,size.y,escape(&w.props.text)
