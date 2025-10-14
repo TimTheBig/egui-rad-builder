@@ -36,7 +36,6 @@ egui_extras = { version = "0.33.0", features = ["chrono"] }
 - Build and run the project with 'cargo build'
 
 # todo
-- add panels
 - add menus
 - add support for multiple 'pages', 'screens', or 'tabs'
 - add support for columns
