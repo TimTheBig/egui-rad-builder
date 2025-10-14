@@ -19,6 +19,7 @@ pub(crate) struct RadBuilderApp {
     generated: String,
     // Settings
     grid_size: f32,
+    show_grid: bool,
     live_top: Option<Rect>,
     live_bottom: Option<Rect>,
     live_left: Option<Rect>,
@@ -36,6 +37,7 @@ impl Default for RadBuilderApp {
             spawning: None,
             generated: String::new(),
             grid_size: 1.0,
+            show_grid: false,
             live_top: None,
             live_bottom: None,
             live_left: None,
@@ -311,6 +313,7 @@ impl RadBuilderApp {
 				.show(ctx, |ui| {
 					let panel_rect = ui.clip_rect();
 					self.live_top = Some(panel_rect);
+					if self.show_grid { self.draw_grid(ui, panel_rect); }
 					for &i in &top_idx {
 						let w = &mut self.project.widgets[i];
 						Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
@@ -325,6 +328,7 @@ impl RadBuilderApp {
 				.show(ctx, |ui| {
 					let panel_rect = ui.clip_rect();
 					self.live_bottom = Some(panel_rect);
+					if self.show_grid { self.draw_grid(ui, panel_rect); }
 					for &i in &bottom_idx {
 						let w = &mut self.project.widgets[i];
 						Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
@@ -339,6 +343,7 @@ impl RadBuilderApp {
 				.show(ctx, |ui| {
 					let panel_rect = ui.clip_rect();
 					self.live_left = Some(panel_rect);
+					if self.show_grid { self.draw_grid(ui, panel_rect); }
 					for &i in &left_idx {
 						let w = &mut self.project.widgets[i];
 						Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
@@ -353,6 +358,7 @@ impl RadBuilderApp {
 				.show(ctx, |ui| {
 					let panel_rect = ui.clip_rect();
 					self.live_right = Some(panel_rect);
+					if self.show_grid { self.draw_grid(ui, panel_rect); }
 					for &i in &right_idx {
 						let w = &mut self.project.widgets[i];
 						Self::draw_widget(ui, panel_rect, self.grid_size, &mut self.selected, w);
@@ -368,6 +374,8 @@ impl RadBuilderApp {
 
             let (resp, _) = ui.allocate_painter(canvas.size(), egui::Sense::hover());
             let painter_rect = egui::Rect::from_min_size(canvas.min, canvas.size());
+            
+            if self.show_grid { self.draw_grid(ui, painter_rect); }
 
             // Draw Center + Free widgets inside the center canvas
             for &i in &center_idx {
@@ -994,6 +1002,7 @@ impl RadBuilderApp {
                 ui.checkbox(&mut self.palette_open, "Show Palette");
             });
             ui.menu_button("Settings", |ui| {
+				ui.checkbox(&mut self.show_grid, "Show grid");
                 ui.horizontal(|ui| {
                     ui.label("Grid");
                     ui.add(egui::DragValue::new(&mut self.grid_size).range(1.0..=64.0));
