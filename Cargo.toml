@@ -14,7 +14,7 @@ persistence = ["eframe/persistence", "egui_extras/serde"]
 
 [dependencies]
 chrono = "0.4.42"
-eframe = { version = "0.33" }
+eframe = "0.33"
 egui = { version = "0.33", features = ["serde"] }
 egui_extras = { version = "0.33", features = ["chrono"] }
 serde = { version = "1", features = ["derive"] }
