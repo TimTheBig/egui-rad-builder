@@ -5,7 +5,8 @@ use crate::{
     },
 };
 use chrono::{Datelike, NaiveDate};
-use egui::{Color32, CornerRadius, Id, Pos2, Rect, Sense, Stroke, UiBuilder, pos2, vec2};
+use copypasta::ClipboardProvider;
+use egui::{pos2, vec2, Color32, CornerRadius, Id, Modal, Pos2, Rect, Sense, Stroke, UiBuilder};
 use egui_extras::{syntax_highlighting::CodeTheme, DatePickerButton};
 use serde::{Deserialize, Serialize};
 
@@ -852,6 +853,7 @@ impl RadBuilderApp {
             ui.add_space(6.0);
             match w.kind {
                 WidgetKind::Label
+                // todo add click type(eg. click, release) and onclick function
                 | WidgetKind::Button
                 | WidgetKind::ImageTextButton
                 | WidgetKind::TextEdit
@@ -1018,16 +1020,40 @@ impl RadBuilderApp {
                     ui.close_kind(egui::UiKind::Menu);
                 }
                 if ui.button("Export JSON").clicked() {
-                    if let Ok(s) = serde_json::to_string_pretty(&self.project) {
-                        self.generated = s;
+                    if let Ok(ex_json) = serde_json::to_string_pretty(&self.project) {
+                        Modal::new("Export JSON modal".into()).show(ui.ctx(), |ui| {
+                            // todo add icon
+                            if ui.button("Copy Exported").clicked() {
+                                ui.ctx().copy_text(ex_json.clone());
+                            }
+
+                            egui_extras::syntax_highlighting::code_view_ui(
+                                ui,
+                                &CodeTheme::from_style(ui.style()),
+                                &ex_json,
+                                "json"
+                            );
+                        });
                     }
                     ui.close_kind(egui::UiKind::Menu);
                 }
-                if ui.button("Import JSON (from editor below)").clicked() {
-                    if let Ok(p) = serde_json::from_str::<Project>(&self.generated) {
-                        self.project = p;
-                        self.selected = None;
-                    }
+                if ui.button("Import JSON").clicked() {
+                        Modal::new("Import JSON modal".into()).show(ui.ctx(), |ui| {
+                            // todo add icon
+                            if ui.button("Paste JSON").clicked() {
+                                let mut ctx = copypasta::ClipboardContext::new().unwrap();
+                                if let Ok(paste_str) = ctx.get_contents()
+                                && let Ok(p) = serde_json::from_str::<Project>(&paste_str) {
+                                    self.project = p;
+                                    self.selected = None;
+                                    // update the next_id to be correct
+                                    self.next_id = self.project.widgets.iter().map(|w| w.id.value()).max()
+                                        .map(|id| id + 1).unwrap_or(0);
+
+                                    self.generated.clear();
+                                }
+                            }
+                        });
                     ui.close_kind(egui::UiKind::Menu);
                 }
                 if ui.button("Clear Project").clicked() {
@@ -1071,7 +1097,12 @@ impl RadBuilderApp {
 
     fn generated_panel(&mut self, ui: &mut egui::Ui) {
         ui.heading("Generated Output");
-        ui.label("Rust code (or JSON export) will appear here. Copy-paste into your app.");
+        ui.label("Rust code. Copy-paste into your app.");
+
+        // todo add icon
+        if ui.button("Copy code").clicked() {
+            ui.ctx().copy_text(self.generated.clone());
+        }
 
         // A scrollable viewport for the generated text:
         egui::ScrollArea::vertical()
@@ -1079,10 +1110,6 @@ impl RadBuilderApp {
             .max_height(280.0)
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                // todo add icon
-                if ui.button("Copy code").clicked() {
-                    ui.ctx().copy_text(&self.generated);
-                }
                 egui_extras::syntax_highlighting::code_view_ui(ui, &CodeTheme::from_style(ui.style()), &self.generated, "rs");
             });
     }

@@ -13,6 +13,10 @@ impl WidgetId {
     pub const fn as_z(&self) -> i32 {
         self.0 as i32
     }
+
+    pub(crate) const fn value(&self) -> u64 {
+        self.0
+    }
 }
 
 impl fmt::Display for WidgetId {
