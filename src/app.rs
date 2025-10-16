@@ -6,7 +6,7 @@ use crate::{
 };
 use chrono::{Datelike, NaiveDate};
 use copypasta::ClipboardProvider;
-use egui::{pos2, vec2, Color32, CornerRadius, Id, Modal, Pos2, Rect, Sense, Stroke, UiBuilder};
+use egui::{pos2, vec2, Button, Color32, CornerRadius, Id, Modal, Pos2, Rect, Sense, Stroke, UiBuilder};
 use egui_extras::{syntax_highlighting::CodeTheme, DatePickerButton};
 use serde::{Deserialize, Serialize};
 
@@ -847,6 +847,8 @@ impl RadBuilderApp {
 
     fn inspector_ui(&mut self, ui: &mut egui::Ui) {
         let grid = self.grid_size; // read before mutably borrowing self
+        let mut duplicate = None;
+
         ui.heading("Inspector");
         ui.separator();
         if let Some(w) = Self::selected_mut(self.selected, &mut self.project.widgets) {
@@ -1005,13 +1007,38 @@ impl RadBuilderApp {
             });
 
             ui.add_space(6.0);
-            if ui.button("Delete").clicked() {
+            // Duplicate button
+            if ui.button("Duplicate").on_hover_cursor(egui::CursorIcon::Copy).clicked() {
+                let mut new_w = w.clone();
+                new_w.id = WidgetId::new(self.next_id);
+                // move above
+                new_w.z += 1;
+                // move down to the right
+                new_w.pos.x += 26.0;
+                new_w.pos.y += 26.0;
+                // add to widgets
+                duplicate = Some(new_w);
+
+                self.selected = None;
+            }
+
+            ui.add_space(6.0);
+            // Delete button
+            if ui.add(Button::new("Delete").fill(Color32::from_rgb(210, 0, 0))).clicked() {
                 let id = w.id; // capture
                 self.project.widgets.retain(|w| w.id != id);
                 self.selected = None;
             }
         } else {
             ui.weak("No selection");
+        }
+
+        if let Some(new_w) = duplicate {
+            self.selected = Some(new_w.id);
+
+            // add to widgets
+            self.project.widgets.push(new_w);
+            self.next_id += 1;
         }
     }
 

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct Project {
+    // todo make into struct that auto increments next_id on push
     pub(crate) widgets: Vec<Widget>,
     /// fixed logical canvas, the designs size
     pub(crate) canvas_size: Vec2,
