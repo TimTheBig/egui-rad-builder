@@ -987,13 +987,14 @@ impl RadBuilderApp {
                     w.pos = snap_pos_with_grid(w.pos, grid);
                 }
             });
-            ui.label("Position / Size");
+            ui.label("Position");
             ui.horizontal(|ui| {
                 ui.label("x");
                 ui.add(egui::DragValue::new(&mut w.pos.x));
                 ui.label("y");
                 ui.add(egui::DragValue::new(&mut w.pos.y));
             });
+            ui.label("Size");
             ui.horizontal(|ui| {
                 ui.label("w");
                 ui.add(egui::DragValue::new(&mut w.size.x).range(16.0..=2000.0));
