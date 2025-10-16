@@ -7,15 +7,23 @@ use crate::{
 use chrono::{Datelike, NaiveDate};
 use egui::{Color32, CornerRadius, Id, Pos2, Rect, Sense, Stroke, UiBuilder, pos2, vec2};
 use egui_extras::DatePickerButton;
+use serde::{Deserialize, Serialize};
 
+fn bool_true() -> bool { true }
+
+#[derive(Serialize, Deserialize)]
 pub(crate) struct RadBuilderApp {
+    #[serde(skip, default = "bool_true")]
     palette_open: bool,
     project: Project,
+    #[serde(skip, default)]
     selected: Option<WidgetId>,
     next_id: u64,
-    // Drag state for spawning from palette
+    /// Drag state for spawning from palette
+    #[serde(skip, default)]
     spawning: Option<WidgetKind>,
-    // Cached generated code
+    /// Cached generated code
+    #[serde(skip, default)]
     generated: String,
     // Settings
     grid_size: f32,
@@ -1642,6 +1650,10 @@ impl RadBuilderApp {
 }
 
 impl eframe::App for RadBuilderApp {
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, self);
+    }
+
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("menubar").show(ctx, |ui| self.top_bar(ui));
         if self.palette_open {
