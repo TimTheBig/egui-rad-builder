@@ -57,32 +57,19 @@ impl Default for RadBuilderApp {
 
 impl RadBuilderApp {
     fn area_at(&self, pos: Pos2) -> DockArea {
-        if let Some(r) = self.live_top {
-            if r.contains(pos) {
-                return DockArea::Top;
-            }
+        if let Some(r) = self.live_top && r.contains(pos) {
+            DockArea::Top
+        } else if let Some(r) = self.live_bottom && r.contains(pos) {
+            DockArea::Bottom
+        } else if let Some(r) = self.live_left && r.contains(pos) {
+            DockArea::Left
+        } else if let Some(r) = self.live_right && r.contains(pos) {
+            DockArea::Right
+        } else if let Some(r) = self.live_center && r.contains(pos) {
+            DockArea::Center
+        } else {
+            DockArea::Free
         }
-        if let Some(r) = self.live_bottom {
-            if r.contains(pos) {
-                return DockArea::Bottom;
-            }
-        }
-        if let Some(r) = self.live_left {
-            if r.contains(pos) {
-                return DockArea::Left;
-            }
-        }
-        if let Some(r) = self.live_right {
-            if r.contains(pos) {
-                return DockArea::Right;
-            }
-        }
-        if let Some(r) = self.live_center {
-            if r.contains(pos) {
-                return DockArea::Center;
-            }
-        }
-        DockArea::Free
     }
 
     fn origin_for_area(&self, area: DockArea) -> Option<Pos2> {
