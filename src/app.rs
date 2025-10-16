@@ -274,9 +274,10 @@ impl RadBuilderApp {
         self.selected = Some(id);
     }
 
-    fn selected_mut(&mut self) -> Option<&mut Widget> {
-        let id = self.selected?;
-        self.project.widgets.iter_mut().find(|w| w.id == id)
+    /// Self::selected_mut(self.selected, &mut self.project.widgets)
+    fn selected_mut(selected: Option<WidgetId>, widgets: &mut Vec<Widget>) -> Option<&mut Widget> {
+        let id = selected?;
+        widgets.iter_mut().find(|w| w.id == id)
     }
 
     fn preview_panels_ui(&mut self, ctx: &egui::Context) {
@@ -848,7 +849,7 @@ impl RadBuilderApp {
         let grid = self.grid_size; // read before mutably borrowing self
         ui.heading("Inspector");
         ui.separator();
-        if let Some(w) = self.selected_mut() {
+        if let Some(w) = Self::selected_mut(self.selected, &mut self.project.widgets) {
             ui.label(format!("ID: {:?}", w.id));
             ui.add_space(6.0);
             match w.kind {
@@ -991,9 +992,9 @@ impl RadBuilderApp {
             ui.label("Position");
             ui.horizontal(|ui| {
                 ui.label("X:");
-                ui.add(egui::DragValue::new(&mut w.pos.x));
+                ui.add(egui::DragValue::new(&mut w.pos.x).range(0..=self.project.canvas_size.x.ceil() as u32));
                 ui.label("Y:");
-                ui.add(egui::DragValue::new(&mut w.pos.y));
+                ui.add(egui::DragValue::new(&mut w.pos.y).range(0..=self.project.canvas_size.y.ceil() as u32));
             });
             ui.label("Size");
             ui.horizontal(|ui| {

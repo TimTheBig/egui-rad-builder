@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct Project {
     pub(crate) widgets: Vec<Widget>,
+    /// fixed logical canvas, the designs size
     pub(crate) canvas_size: Vec2,
     pub(crate) panel_top_enabled: bool,
     pub(crate) panel_bottom_enabled: bool,
