@@ -6,7 +6,7 @@ use crate::{
 };
 use chrono::{Datelike, NaiveDate};
 use copypasta::ClipboardProvider;
-use egui::{pos2, vec2, Button, Color32, CornerRadius, Id, Modal, Pos2, Rect, Sense, Stroke, UiBuilder};
+use egui::{pos2, vec2, Button, Color32, CornerRadius, Id, Modal, Pos2, Rect, Sense, Stroke, Ui, UiBuilder};
 use egui_extras::{syntax_highlighting::CodeTheme, DatePickerButton};
 use serde::{Deserialize, Serialize};
 
@@ -15,6 +15,7 @@ fn bool_true() -> bool { true }
 #[derive(Serialize, Deserialize)]
 pub(crate) struct RadBuilderApp {
     #[serde(skip, default = "bool_true")]
+    /// Is the widget picker open
     palette_open: bool,
     project: Project,
     #[serde(skip, default)]
@@ -34,6 +35,17 @@ pub(crate) struct RadBuilderApp {
     live_left: Option<Rect>,
     live_right: Option<Rect>,
     live_center: Option<Rect>,
+
+    #[serde(skip, default)]
+    /// The open modal if any
+    open_modal: Option<OpenModal>,
+}
+
+pub(crate) enum OpenModal {
+    /// json import modal is open
+    Import,
+    /// json export modal is open
+    Export,
 }
 
 impl Default for RadBuilderApp {
@@ -45,6 +57,7 @@ impl Default for RadBuilderApp {
             next_id: 1,
             spawning: None,
             generated: String::new(),
+
             grid_size: 14.0,
             show_grid: false,
             live_top: None,
@@ -52,6 +65,8 @@ impl Default for RadBuilderApp {
             live_left: None,
             live_right: None,
             live_center: None,
+
+            open_modal: None,
         }
     }
 }
@@ -1050,40 +1065,11 @@ impl RadBuilderApp {
                     ui.close_kind(egui::UiKind::Menu);
                 }
                 if ui.button("Export JSON").clicked() {
-                    if let Ok(ex_json) = serde_json::to_string_pretty(&self.project) {
-                        Modal::new("Export JSON modal".into()).show(ui.ctx(), |ui| {
-                            // todo add icon
-                            if ui.button("Copy Exported").clicked() {
-                                ui.ctx().copy_text(ex_json.clone());
-                            }
-
-                            egui_extras::syntax_highlighting::code_view_ui(
-                                ui,
-                                &CodeTheme::from_style(ui.style()),
-                                &ex_json,
-                                "json"
-                            );
-                        });
-                    }
+                    self.open_modal = Some(OpenModal::Export);
                     ui.close_kind(egui::UiKind::Menu);
                 }
                 if ui.button("Import JSON").clicked() {
-                        Modal::new("Import JSON modal".into()).show(ui.ctx(), |ui| {
-                            // todo add icon
-                            if ui.button("Paste JSON").clicked() {
-                                let mut ctx = copypasta::ClipboardContext::new().unwrap();
-                                if let Ok(paste_str) = ctx.get_contents()
-                                && let Ok(p) = serde_json::from_str::<Project>(&paste_str) {
-                                    self.project = p;
-                                    self.selected = None;
-                                    // update the next_id to be correct
-                                    self.next_id = self.project.widgets.iter().map(|w| w.id.value()).max()
-                                        .map(|id| id + 1).unwrap_or(0);
-
-                                    self.generated.clear();
-                                }
-                            }
-                        });
+                    self.open_modal = Some(OpenModal::Import);
                     ui.close_kind(egui::UiKind::Menu);
                 }
                 if ui.button("Clear Project").clicked() {
@@ -1123,6 +1109,65 @@ impl RadBuilderApp {
                 ui.strong("egui RAD GUI Builder");
             });
         });
+    }
+
+    fn modals(&mut self, ctx: &egui::Context) {
+        let Some(ref open_modal) = self.open_modal else { return; };
+
+        fn default_modal(id: Id, ctx: &egui::Context) -> Modal {
+            let view_rect_height = ctx.content_rect().height().abs();
+            // 5% + 10px padding on top and bottom
+            let width = view_rect_height * 0.9 - 10.0;
+            Modal {
+                area: Modal::default_area(id.into()).default_size(vec2(550.0, width)),
+                backdrop_color: Color32::from_black_alpha(100),
+                frame: None,
+            }
+        }
+
+        let modal = match open_modal {
+            OpenModal::Import => default_modal("Import JSON modal".into(), ctx).show(ctx, |ui| {
+                    // todo add text box for alt input
+
+                    // todo add icon
+                    if ui.button("Paste JSON").clicked() {
+                        let mut ctx = copypasta::ClipboardContext::new().unwrap();
+                        if let Ok(paste_str) = ctx.get_contents()
+                        && let Ok(p) = serde_json::from_str::<Project>(&paste_str) {
+                            self.project = p;
+                            self.selected = None;
+                            // update the next_id to be correct
+                            self.next_id = self.project.widgets.iter().map(|w| w.id.value()).max()
+                                .map(|id| id + 1).unwrap_or(0);
+
+                            self.generated.clear();
+                        }
+                    }
+                }),
+            OpenModal::Export => default_modal("Export JSON modal".into(), ctx).show(ctx, |ui| {
+                    if let Ok(ex_json) = serde_json::to_string_pretty(&self.project) {
+                        // todo add icon
+                        if ui.button("Copy Exported").clicked() {
+                            ui.ctx().copy_text(ex_json.clone());
+                        }
+
+                        egui::ScrollArea::vertical()
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| {
+                                egui_extras::syntax_highlighting::code_view_ui(
+                                    ui,
+                                    &CodeTheme::from_style(ui.style()),
+                                    &ex_json,
+                                    "json"
+                                );
+                            });
+                    } else { ui.label("Failed to serialize project to json"); }
+                }),
+        };
+
+        if modal.should_close() {
+            self.open_modal = None;
+        }
     }
 
     fn generated_panel(&mut self, ui: &mut egui::Ui) {
@@ -1428,5 +1473,8 @@ impl eframe::App for RadBuilderApp {
         if self.spawning.is_some() {
             ctx.set_cursor_icon(egui::CursorIcon::Grabbing);
         }
+
+        // show modals
+        self.modals(ctx);
     }
 }
