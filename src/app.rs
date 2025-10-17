@@ -1125,6 +1125,7 @@ impl RadBuilderApp {
             }
         }
 
+        let mut close_modal = false;
         let modal = match open_modal {
             OpenModal::Import => default_modal("Import JSON modal".into(), ctx).show(ctx, |ui| {
                     // todo add text box for alt input
@@ -1142,6 +1143,7 @@ impl RadBuilderApp {
 
                             self.generated.clear();
                         }
+                        close_modal = true;
                     }
                 }),
             OpenModal::Export => default_modal("Export JSON modal".into(), ctx).show(ctx, |ui| {
@@ -1165,7 +1167,7 @@ impl RadBuilderApp {
                 }),
         };
 
-        if modal.should_close() {
+        if close_modal || modal.should_close() {
             self.open_modal = None;
         }
     }
